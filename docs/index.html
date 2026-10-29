@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SpriteForge docs - setup, API, data format</title>
+<style>
+  :root { color-scheme: dark; }
+  body { max-width: 900px; margin: 0 auto; padding: 24px 16px; font: 15px/1.55 "Segoe UI", system-ui, sans-serif; color: #e8e6e0; background: #1c1d22; }
+  h1, h2, h3 { color: #f2ba42; } h2 { margin-top: 2em; border-bottom: 1px solid #3a3d47; padding-bottom: 4px; }
+  code, pre { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  pre { background: #15161a; border: 1px solid #3a3d47; border-radius: 8px; padding: 12px; overflow: auto; }
+  code { background: #26282f; padding: 1px 5px; border-radius: 4px; }
+  table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #3a3d47; padding: 6px 8px; text-align: left; vertical-align: top; }
+  a { color: #6aacf0; } .note { border-left: 3px solid #f2ba42; padding: 4px 12px; background: #26282f; border-radius: 0 8px 8px 0; }
+  nav a { margin-right: 14px; }
+</style>
+</head>
+<body>
+<h1>SpriteForge</h1>
+<p>Pixel sprites, colour variants, timeline clips and state-machine behaviours for games that cannot load image files. Every sprite becomes a small set of coloured rectangles drawn by one runtime file; the bundled runtime targets Miliastra Wonderland Lua client scripts, and the data format works with any engine that can draw a rectangle. The editor runs in 15 languages (auto-detected from the browser, switchable in the top bar). <a href="../index.html">Open the editor</a>.</p>
+<nav><a href="#why">Why</a><a href="#setup">Editor setup</a><a href="#workflow">Workflow</a><a href="#drawing">Drawing</a><a href="#examples">Examples</a><a href="#api">Lua API</a><a href="#more">More</a><a href="#format">Data format</a><a href="#budget">Rectangle budget</a><a href="#faq">FAQ</a></nav>
+
+<h2 id="why">Why this exists</h2>
+<p>Some platforms (Miliastra Wonderland among them) do not let creators upload images. Everything on screen is built from the built-in asset list. A plain square image, tinted and resized many times, is the only way to show something the platform has never seen - a mascot, a dish, a crop, a card frame. Doing that by hand is tedious and expensive: every rectangle is a UI control. SpriteForge turns pixel art into the fewest rectangles it can, keeps the result editable, and adds the things a sprite needs to live inside a game: recolourable palettes, layers, frame animation, procedural clips and a state machine the game drives with events.</p>
+
+<h2 id="setup">Editor setup (Miliastra Wonderland, once per stage)</h2>
+<p>You need three files: <code>pixdata.lua</code> (Export in the editor), <code>pix.lua</code> (the runtime) and <code>spriteforge_main.lua</code> (the main script; the editor's Export window downloads it with your sprite name already filled in).</p>
+<ol>
+  <li>Put the three files into the <code>external_lua_file</code> folder of your stage: <code>...\Genshin Impact\BeyondLocal\&lt;UID&gt;\Beyond_Local_Save_Level\&lt;stage ID&gt;\external_lua_file</code>. To find it: Client Script Resource Explorer → right-click → New Client Script, then copy the path from the folder window.</li>
+  <li>Client Script Resource Explorer → right-click → <b>Batch Add Script Files → Add by Folder</b>. A file without a mapping never reaches the game.</li>
+  <li><b>Manage UI Control Groups → Interface Layout → Add UI Control → Client Control Container</b>, name it <code>PX_Root</code>, then Canvas Settings → Go to Edit. In code, (0, 0) is the centre of this container; the canvas is 1600×900.</li>
+  <li><b>UI Control Group Library → Client Control Templates</b> → new template of type <b>Image</b>: name <code>T_PIXEL</code>, image <code>100001</code> (white square), size 10×10, pivot and anchor centred, Initially Visible on. Write down its <b>Control Template Index ID</b>.</li>
+  <li>On <code>PX_Root</code>: Script tab → Add Script → <code>spriteforge_main.lua</code>. Attach only this file; it loads <code>pix</code> and <code>pixdata</code> with <code>require</code>.</li>
+  <li>Right-click <code>spriteforge_main.lua</code> → <b>Edit Script Variables</b> → add <code>TPL_SPRITE</code>, type <b>Client Control ID</b>, value = the template index of <code>T_PIXEL</code>.</li>
+  <li>At the top of <code>spriteforge_main.lua</code>: <code>SPRITE</code> is the sprite name, <code>SIZE</code> the screen units per pixel.</li>
+  <li>Ctrl+S, restart the Sandbox completely, Test Play. Logs → Client Scripts should show <code>SpriteForge: &lt;name&gt; ready</code>. <code>no container or TPL_SPRITE</code> means the script variable is missing or has the wrong index.</li>
+</ol>
+<p>After redrawing a sprite: export <code>pixdata.lua</code> again, replace the file, Ctrl+S and restart the Sandbox. Mappings and editor settings stay.</p>
+<div class="note"><code>script.object</code> can still be <code>nil</code> in the first frames of <code>OnStart</code>. <code>spriteforge_main.lua</code> retries for up to 120 frames; keep that pattern if you write your own main script. <code>Px.root(script, 123)</code> also accepts a template index number directly.</div>
+<p>Optional: a second template with a raycast target exposed as <code>TPL_HIT</code>. <code>Px.hit()</code> and <code>actor:onTap()</code> clone it for clickable areas; without it those calls return nil.</p>
+
+<h2 id="workflow">Workflow</h2>
+<ol>
+  <li><b>Draw or import.</b> Import a picture (downscaled, quantised to N colours, optional outline), a sprite sheet (cells become frames), ASCII rows with a legend, or a previously exported <code>pixdata.lua</code>. Or draw from scratch with pencil, fill, line, rectangle, mirror-X and layers.</li>
+  <li><b>Palette.</b> Keys named <code>p0…p3</code> and <code>q0…q3</code> are tint slots. Define override palettes (<code>hydro</code>, <code>pyro</code>, <code>gold</code>…) that only replace those keys; one sprite then has as many variants as you have palettes, at no extra cost.</li>
+  <li><b>Layers.</b> Mark a layer <b>S</b> (separate) to export it as its own sprite <code>name/layer</code>. The runtime can show and hide it per state (hat on, hat off) or you can draw it alone.</li>
+  <li><b>Animate.</b> A clip is a timeline with tracks on <code>x y sx sy rot alpha frame pal layer:&lt;name&gt;</code>. Loop clips (idle, float) run forever; one-shot clips (squash, celebrate, fadeout) fire an <code>end</code> event. Presets give you idle/bounce/squash/shake/float/fadeout/frames in one click.</li>
+  <li><b>Behave.</b> States choose a clip, a palette and layer visibility; transitions fire on game events (<code>tap</code>), on timers (random 3-6 s), when a clip ends, or when a parameter crosses a threshold (<code>energy &lt; 0.3</code>). The preview panel lets you fire events and drag parameters.</li>
+  <li><b>Export.</b> <code>pixdata.lua</code> contains everything (sprites, palettes, clips, behaviours). Save the <code>.spriteforge.json</code> project next to your Lua sources to keep editing later.</li>
+</ol>
+
+<h2 id="drawing">Drawing sprites (vector)</h2>
+<p>Besides pixel art, a sprite can be a <b>drawing</b>: brush strokes, lines, circles and boxes (New sprite… → Drawing). It works with everything else: palettes and variants, layers and parts, frames, clips, behaviours, tweens and particles.</p>
+<p>The editor stores shapes; for the game each shape is compiled into primitives that use two built-in assets: <code>100001</code> (square) and <code>100002</code> (circle). A stroke becomes one rotated rectangle per segment plus circles at its ends and corners; a filled rectangle is one square, a filled ellipse one stretched circle. The editor preview draws exactly these primitives, so the game shows the same picture. Translucent colours show slightly darker where pieces of one stroke overlap, in the editor and in the game alike.</p>
+<pre>D.V["smile"] = { w = 64, h = 64, ax = 32, ay = 64, n = 13, k = { "out", "skin" },
+  p = { 2, 32, 32, 52, 52, 0, 1,   -- asset (1 square, 2 circle), x, y, w, h, rotation, colour index
+        2, 32, 32, 46, 46, 0, 2, ... } }</pre>
+<p>Units are drawing units with y going down, like the pixel grid; <code>px</code> (default <code>D.PX</code>) gives screen units per drawing unit. Rotation is clockwise on screen; the runtime converts it for the UI. Cost = number of primitives; the Smoothing slider of the brush lowers it.</p>
+
+<h2 id="examples">Examples</h2>
+<p>Every example uses the sample <b>potion</b> sprite. In the editor, Guide → "Add this example to my project" adds it with all its colours, clips and behaviour, and the Guide shows each example running live.</p>
+
+<h3>Show a sprite</h3>
+<pre>local Px = require("pix")
+local root = Px.root(script, "TPL_SPRITE")
+local a = Px.spawn(root, "potion", 0, 0, { px = 6 })   -- (0, 0) = centre of the container
+-- every frame: Px.update(dt)</pre>
+<p>A static picture that never animates is cheaper to manage with <code>Px.draw</code>:</p>
+<pre>local icon = Px.draw(root, "heart", -300, 200, { px = 4 })
+icon:pos(-280, 200)   icon:scale(1.5, 1.5)   icon:alpha(0.5)   icon:destroy()</pre>
+
+<h3>Colour variants</h3>
+<p>The potion's liquid uses the tint slots <code>p0…p3</code>. The variants <code>blue</code>, <code>green</code> and <code>gold</code> only redefine those four keys.</p>
+<pre>Px.spawn(root, "potion", -150, 0)                      -- base (red)
+Px.spawn(root, "potion",  -50, 0, { pal = "blue" })
+Px.spawn(root, "potion",   50, 0, { pal = "green" })
+local p = Px.spawn(root, "potion", 150, 0, { pal = "gold" })
+p:tint("blue")                                          -- change later</pre>
+
+<h3>Parts</h3>
+<p>The label is drawn on its own layer marked <b>part</b>, so the game can hide it:</p>
+<pre>a:layer("label", false)   -- hide
+a:layer("label", true)    -- show</pre>
+
+<h3>Frames and clips</h3>
+<p><b>Frames</b> are drawings (a flip-book). <b>Clips</b> are movement over time and can switch frames with a <code>frame</code> track. The potion has three clips:</p>
+<table>
+<tr><th>Clip</th><th>Tracks</th><th>Loop</th></tr>
+<tr><td><code>idle</code></td><td>frame 1 → 2 (step), y 0 → 2 → 0 (inOutQuad), 1.2 s</td><td>yes</td></tr>
+<tr><td><code>pop</code></td><td>sx 1.3 → 1, sy 0.6 → 1 (outBack), pal gold → base, 0.5 s</td><td>no, fires <code>end</code></td></tr>
+<tr><td><code>drain</code></td><td>alpha 1 → 0, y 0 → -8 (outQuad), 0.8 s</td><td>no</td></tr>
+</table>
+<p>Ready-made presets: idle, bounce, squash, shake, float, spin, fadeout, frames. How a clip looks in <code>pixdata.lua</code>:</p>
+<pre>D.C["potion.idle"] = { dur = 1.2, loop = true, tracks = {
+  { prop = "frame", ease = "step",      keys = { {0, 1}, {0.6, 2} } },
+  { prop = "y",     ease = "inOutQuad", keys = { {0, 0}, {0.6, 2}, {1.2, 0} } } } }</pre>
+<pre>a:play("idle")                         -- or "potion.idle"
+a:on("clipEnd", function(actor, clip) print(clip .. " finished") end)</pre>
+<p>Making one in the editor: Animate → + Preset… (or + Clip) → choose what should change and press + Track → click the track where a key should be and type its value → Space plays.</p>
+
+<h3>Behaviour</h3>
+<p>The potion's behaviour has four states. The game only sends events and numbers.</p>
+<table>
+<tr><th>State</th><th>Clip</th><th>Rules</th></tr>
+<tr><td><code>idle</code> (initial)</td><td>idle</td><td>on event <code>tap</code> → pop · when <code>charge</code> &lt; 0.2 → empty</td></tr>
+<tr><td><code>pop</code></td><td>pop</td><td>when the clip ends → idle</td></tr>
+<tr><td><code>empty</code></td><td>-, label hidden</td><td>when <code>charge</code> &gt; 0.5 → idle · on event <code>use</code> → gone</td></tr>
+<tr><td><code>gone</code></td><td>drain</td><td>-</td></tr>
+</table>
+<pre>local a = Px.spawn(root, "potion", 0, 0)   -- starts in "idle"
+a:fire("tap")           -- idle -> pop -> (clip ends) -> idle
+a:set("charge", 0.1)    -- idle -> empty
+a:fire("use")           -- empty -> gone
+a:on("state", function(actor, name) print("now " .. name) end)
+print(a.stateName, a:get("charge"))</pre>
+<p>More designs built the same way:</p>
+<pre>ENEMY
+  idle   clip idle    after 2-4 s -> walk;  on "hit" -> hurt;  when hp &lt; 0.01 -> dead
+  walk   clip walk    after 1-3 s -> idle;  on "hit" -> hurt
+  hurt   clip shake   when the clip ends -> idle
+  dead   clip fadeout
+
+BUTTON
+  normal   -            on "enter" -> hover
+  hover    clip float   on "leave" -> normal;  on "tap" -> pressed
+  pressed  clip squash  when the clip ends -> normal
+
+COIN
+  spin   clip spin      on "pick" -> gone
+  gone   clip fadeout</pre>
+
+<h3>Extras</h3>
+<pre>Px.draw(root, "potion", 0, 0, { lod = "half" })         -- half-size copy, fewer rectangles
+Px.nine(root, "button", 0, 0, 300, 90)                  -- stretchable panel (preset "button")
+Px.tiles(root, "wall", grid, 64)                        -- auto-tiles, grid[y][x] = true
+Px.fill(root, "heart", 0, 0, 0.6)                       -- bottom 60 % of the heart
+Px.hit(root, x, y, w, h, function() a:fire("tap") end)  -- clickable area, needs TPL_HIT
+a:onTap(function(actor) actor:fire("tap") end)</pre>
+
+<h2 id="api">Lua API (pix.lua)</h2>
+<pre>local Px = require("pix")
+local root = Px.root(script)                -- container object; also reads TPL_SPRITE
+
+-- static sprites
+local n = Px.draw(root, "crate", x, y, { px = 4, pal = "base", flip = false, alpha = 1 })
+n:pos(x, y)  n:scale(sx, sy)  n:rot(deg)  n:show(bool)  n:front()  n:destroy()
+n:tint("pyro")  n:alpha(0.5)  n:flip(true)  n:repaint("crate#2")
+
+-- actors: sprite + clips + behaviour
+local a = Px.spawn(root, "slime", x, y, { pal = "hydro", px = 4, behavior = "slime" })
+a:play("bounce")            -- clip name, or "slime.bounce"
+a:state("idle")             -- force a state
+a:fire("tap")               -- event -> transition
+a:set("energy", 0.2)        -- parameter -> conditional transition
+a:get("energy")
+a:layer("hat", false)       -- show/hide a separate layer
+a:tint("electro")           -- instance palette (state/clip palettes win while active)
+a:on("state", function(actor, name) end)
+a:on("clipEnd", function(actor, clip) end)
+a.stateName, a.props.x, a.props.frame   -- read-only inspection
+
+-- composition and effects
+local g = Px.stack(root, { "body", "hat", "cape" }, x, y, { pal = "team" })
+local bar = Px.fill(root, "heart", x, y, 0.6)     -- bottom 60 % of the sprite
+local small = Px.draw(root, "crate", x, y, { lod = "half" })   -- name@2 variant, same size, fewer rectangles
+local panel = Px.nine(root, "frame", x, y, 420, 160)          -- 9-slice from name~tl … name~br
+local walls = Px.tiles(root, "wall", grid, 64)                 -- autotiles: grid[y][x] = true
+local hit = Px.hit(root, x, y, w, h, function() end)           -- needs TPL_HIT
+a:onTap(function(actor) actor:fire("tap") end)
+
+-- every frame
+function OnUpdate(dt) Px.update(dt) end
+
+Px.count       -- live rectangle controls created by SpriteForge
+Px.get(name)   -- decoded sprite { w, h, ax, ay, rects }
+Px.color(key, palName)</pre>
+<p>Coordinates: <code>pos</code> is in UI units relative to the parent, y up. Clip <code>x</code>/<code>y</code> are in sprite pixels and are multiplied by <code>px</code>, so a clip looks the same at any size. Rotation is counter-clockwise degrees. Frames of one sprite reuse the same controls: switching frames creates no new controls.</p>
+
+<h2 id="more">More runtime features</h2>
+<p>All of these are driven by <code>Px.update(dt)</code>.</p>
+<table>
+<tr><th>Call</th><th>What it does</th></tr>
+<tr><td><code>a:on("event", fn(actor, name))</code></td><td>Clip events: an <code>ev</code> track in a clip holds named keys; they are sent at that moment of the clip (loops included). Use for sounds, hit frames, footsteps.</td></tr>
+<tr><td><code>a:playOnce(clip, done)</code></td><td>Plays a clip once, then returns to the clip that was playing; <code>done(actor)</code> is called at the end. Does not send <code>end</code> to the behaviour.</td></tr>
+<tr><td><code>a:speed(m)</code></td><td>Clip playback speed multiplier (1 = normal).</td></tr>
+<tr><td><code>a:flip(on)</code>, <code>a:face(dx)</code></td><td>Mirror the sprite; <code>face</code> flips by the sign of a movement.</td></tr>
+<tr><td><code>n:moveTo(x, y, dur, ease, done)</code><br><code>n:moveBy(dx, dy, …)</code>, <code>n:scaleTo(s, …)</code>, <code>n:rotTo(deg, …)</code>, <code>n:fadeTo(a, …)</code></td><td>Tweens on any node or actor, in UI units, added on top of clips. Returns a handle for <code>Px.cancel</code>. <code>fadeTo</code> repaints in 5 % steps.</td></tr>
+<tr><td><code>Px.tween(node, {x=, y=, sx=, sy=, rot=, alpha=}, dur, ease, done)</code></td><td>The general form of the tweens above.</td></tr>
+<tr><td><code>Px.after(sec, fn)</code>, <code>Px.every(sec, fn)</code>, <code>Px.cancel(h)</code></td><td>Timers on the same clock as the sprites.</td></tr>
+<tr><td><code>Px.burst(parent, name, x, y, {count, speed, angle, spread, gravity, life, px, pal, spin, fade})</code></td><td>Particles: small copies that fly, fall, fade (in 25 % steps) and are destroyed. Each copy costs its rectangles while alive.</td></tr>
+<tr><td><code>Px.clear()</code></td><td>Destroys every actor and particle and stops all tweens and timers.</td></tr>
+</table>
+<p>Easing names (timeline and tweens): linear, inQuad, outQuad, inOutQuad, inCubic, outCubic, inOutCubic, inSine, outSine, inOutSine, inBack, outBack, outElastic, outBounce, step.</p>
+<p>Ready-made clips (Animate → + Preset…): idle, float, hover, sway, pendulum, pulse, heartbeat, wobble, shiver, blink, glow · walk, run, hop, bounce, jump, dash, orbit · pop-in, fade-in, drop-in, rise-in, slide-in-left, slide-in-right, zoom-in, spin-in · pop-out, fadeout, slide-out-left, slide-out-right, spin-out, collect · squash, shake, hit, flash, tada, yes, no, attack, recoil, press, attention, surprise · spin, coin-flip, sparkle, bob, ready · defeat, dissolve, ghost, melt · frames, frames-once, ping-pong.</p>
+<pre>a:on("event", function(actor, name) if name == "hit" then dealDamage() end end)
+a:playOnce("attack")
+a:moveTo(300, -120, 0.6, "outCubic", function() a:fire("arrived") end)
+Px.every(4, function() a:playOnce("blink") end)
+Px.burst(root, "coin", 0, 0, { count = 8 })</pre>
+
+<h2 id="format">Data format (pixdata.lua)</h2>
+<table>
+<tr><th>Table</th><th>Content</th></tr>
+<tr><td><code>D.P[palette][key] = {r,g,b,a}</code></td><td>Palettes. <code>base</code> must contain every key; other palettes override a subset.</td></tr>
+<tr><td><code>D.S[name] = {w,h,ax,ay,n,k,r}</code></td><td>Rect mesh. <code>k</code> is the key order, <code>r</code> packs 5 chars per rectangle (x, y, w, h, key index) using printable ASCII 35-126 without backslash, so each value is 0-90. Sprites wider or taller than 91 pixels (up to 256×256) use the wide form <code>z=2</code>: x, y, w and h take two characters each (hi × 91 + lo), 9 characters per rectangle. Frame 2+ is <code>name#2</code>; a separate layer is <code>name/layer</code> (with the same frame suffix).</td></tr>
+<tr><td><code>D.A[name]</code></td><td>Sprite meta: w, h, frames, fps, layer names, separate layers, <code>lod</code>, <code>tiles</code>, <code>nine = {l,t,r,b}</code>.</td></tr>
+<tr><td><code>name@2</code>, <code>name~tl</code>…</td><td>Half-resolution LOD copy (drawn at 2×px), and the nine 9-slice pieces. Autotile sprites carry 16 frames in the order none, n, e, ne, s, ns, se, nse, w, nw, we, new, sw, nsw, sew, nsew (bit 1 = N, 2 = E, 4 = S, 8 = W).</td></tr>
+<tr><td><code>D.C["sprite.clip"]</code></td><td><code>{ dur, loop, tracks = { { prop, ease, keys = { {t, v}, … } } } }</code>. Numeric props interpolate with the track ease; <code>frame</code>, <code>pal</code> and <code>layer:*</code> step; <code>ev</code> keys are event names sent when playback passes them.</td></tr>
+<tr><td><code>D.B[name]</code></td><td><code>{ initial, params, states = { name = { clip, pal, layers, on = { {ev=…}|{timer={a,b}}|{param=…, lt|gt=…}, to=… } } } }</code></td></tr>
+</table>
+<p>The encoder paints larger colour regions first and lets later colours overlap them, which is why a 16×14 slime costs ~23 rectangles instead of ~120. Translucent keys (alpha &lt; 255) are never painted under other colours. The format is stable across versions: files exported by older SpriteForge builds keep working with newer <code>pix.lua</code>.</p>
+
+<h2 id="budget">Rectangle budget</h2>
+<p>Each rectangle is one UI control. From shipped games on the platform: keep live SpriteForge rectangles under roughly <b>2 000 on PC</b> and <b>1 200 on phones</b> for a steady 60 fps. The editor shows the cost of every sprite and of the whole project; the runtime exposes <code>Px.count</code>. Ways to spend less: fewer colours (the <b>Simplify</b> button merges rare colours), flat fills instead of noise, outlines only where they read, <code>px</code> for size instead of resolution, the half-res LOD for small copies, and destroying sprites that leave the screen.</p>
+
+<h2 id="faq">FAQ</h2>
+<p><b>Can sprites be clicked?</b> Add your own hit control (a template with a raycast target) on top; SpriteForge rectangles have no raycast target so they never block taps.</p>
+<p><b>Can I use this outside the UI (3D world)?</b> No - Lua client scripts in 7.1 control UI only, so SpriteForge is for HUDs, cards, menus and games that live entirely in UI.</p>
+<p><b>Does it change my save or stage files?</b> No. It only produces Lua tables; nothing touches <code>.gia</code>/<code>.gil</code>.</p>
+<p><b>Which languages?</b> English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Русский, ไทย, Tiếng Việt, Deutsch, Bahasa Indonesia, Português, Türkçe, Italiano - the same set as Genshin Impact. The editor picks the browser language and remembers the one you choose.</p>
+<p><b>Where is my project stored?</b> In the browser (localStorage) while you work; use <b>Save</b> to download the <code>.spriteforge.json</code> file and keep it in your repository.</p>
+</body>
+</html>
