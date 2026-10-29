@@ -1504,7 +1504,7 @@ function openAbout() {
     el("p", {}, t("SpriteForge is an independent, unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by any game developer or publisher. All trademarks belong to their respective owners.")),
     el("p", {}, t("SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002). Everything you draw and export is your own work.")),
     el("p", {}, t("Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided as is, without warranty of any kind.")),
-    el("p", { class: "help" }, t("Open source under the MIT licence."), " ", el("a", { href: "https://github.com/khruq/SpriteForge", target: "_blank", rel: "noopener" }, "github.com/khruq/SpriteForge")),
+    el("p", { class: "help" }, "© 2026 khruq · ", t("Open source under the MIT licence."), " ", el("a", { href: "https://github.com/khruq/SpriteForge", target: "_blank", rel: "noopener" }, "github.com/khruq/SpriteForge")),
     el("div", { class: "row" }, el("span", { class: "spacer" }), btn(t("Close"), closeDialog))));
   dlg.classList.add("on");
 }

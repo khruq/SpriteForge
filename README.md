@@ -64,7 +64,7 @@ node tools/i18n/build.mjs     # regenerate js/strings.js after editing translati
 
 ## License
 
-MIT.
+MIT © 2026 khruq. See [LICENSE](LICENSE).
 
 ## Disclaimer
 
