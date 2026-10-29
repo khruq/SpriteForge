@@ -1,4 +1,4 @@
--- Runs pix.lua against stub Miliastra API objects and checks clip/behaviour semantics.
+-- Runs pix.lua against stub UI API objects and checks clip/behaviour semantics.
 package.path = "./lua/?.lua;./examples/?.lua;" .. package.path
 local calls = { spawn = 0, destroy = 0 }
 local Ctrl = {} Ctrl.__index = Ctrl

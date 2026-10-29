@@ -2,9 +2,9 @@
 
 Live: https://khruq.github.io/SpriteForge/
 
-A browser sprite editor (pixel art and freehand drawings) for games that cannot load image files. Draw or import a sprite, give it colour variants, animate it on a timeline, describe how it reacts with a small state machine, and export one Lua data file. Every sprite is stored as a minimal set of coloured rectangles; the bundled `pix.lua` runtime draws them in **Miliastra Wonderland** (editor 7.1+) with plain UI image controls, and the format is simple enough to port to any engine.
+A browser sprite editor (pixel art and freehand drawings) for games that cannot load image files. Draw or import a sprite, give it colour variants, animate it on a timeline, describe how it reacts with a small state machine, and export one Lua data file. Every sprite is stored as a minimal set of coloured rectangles; the bundled `pix.lua` runtime draws them with plain UI image controls from Lua client scripts, and the format is simple enough to port to any engine.
 
-The editor is available in 15 languages (the Genshin Impact set), auto-detected from the browser; standard editor shortcuts (`?` shows the list), a full colour picker, a built-in Guide and a sample project help first-time users.
+The editor is available in 15 languages, auto-detected from the browser; standard editor shortcuts (`?` shows the list), a full colour picker, a built-in Guide and a sample project help first-time users.
 
 **Live editor:** open `index.html` (or the GitHub Pages site). **Docs:** `docs/index.html`.
 
@@ -22,7 +22,7 @@ The editor is available in 15 languages (the Genshin Impact set), auto-detected 
 ## Quick start
 
 1. Export `pixdata.lua` from the editor and copy it with `lua/pix.lua` into your stage's `external_lua_file`.
-2. In the Miliastra editor: a Custom UI container with your script on it, plus one Image control template (white square, asset `100001`, centred) exposed to the script as parameter `TPL_SPRITE`.
+2. In your game editor: a client UI container with your script on it, plus one Image control template (white square, asset `100001`, centred) exposed to the script as parameter `TPL_SPRITE`.
 3. In Lua:
 
 ```lua
@@ -42,12 +42,12 @@ See `lua/example_main.lua` and `examples/pixdata.lua`.
 
 ```
 index.html, css/, js/      the editor (static, no build step)
-lua/pix.lua                runtime for Miliastra Wonderland
+lua/pix.lua                Lua runtime
 lua/example_main.lua       minimal client script
 examples/pixdata.lua       export of the demo project
 docs/index.html            setup, API, data format, budget
 tools/mesh_check.mjs       encoder round-trip test (node)
-tools/lua_check.lua        runtime test against stubbed Miliastra API (lua 5.4)
+tools/lua_check.lua        runtime test against a stubbed UI API (lua 5.4)
 tools/nine_check.lua       9-slice geometry and LOD coverage test
 tools/i18n/                UI translations (keys.json + one array per language) and build.mjs → js/strings.js
 tools/smoke/               headless browser smoke test (playwright)
@@ -68,4 +68,8 @@ MIT.
 
 ## Disclaimer
 
-SpriteForge is an unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by HoYoverse or COGNOSPHERE. Genshin Impact and Miliastra Wonderland are trademarks of their respective owners and are named here only to describe compatibility. SpriteForge contains no game files, art or code; it refers to the built-in shapes of the editor only by their index numbers. The sample sprites and presets were made for this project.
+SpriteForge is an independent, unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by any game developer or publisher. All trademarks belong to their respective owners.
+
+SpriteForge contains no game files, art or code; it refers to the built-in shapes of game editors only by their index numbers. The sample sprites and presets were made for this project.
+
+Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided "as is", without warranty of any kind (see LICENSE).

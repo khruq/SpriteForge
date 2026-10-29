@@ -1,8 +1,8 @@
-import { compileShapes, drawPrims } from "./vector.js?v=1.1";
-import { cachedFrame, drawScaled } from "./raster.js?v=1.1";
+import { compileShapes, drawPrims } from "./vector.js?v=1.2";
+import { cachedFrame, drawScaled } from "./raster.js?v=1.2";
 // SpriteForge - runtime simulator. Mirrors lua/pix.lua: the same clip evaluation
 // and the same state machine, so what the browser preview shows is what the
-// Lua runtime does in Miliastra.
+// Lua runtime does in the game.
 
 export const EASE = {
   linear: t => t,

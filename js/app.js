@@ -1,14 +1,14 @@
-import * as M from "./model.js?v=1.1";
-import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.1";
-import { toLua, toJSON, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.1";
-import { decodeRects, rasterize } from "./mesh.js?v=1.1";
-import { Actor, drawActor, EASE } from "./sim.js?v=1.1";
-import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.1";
-import { t, lang, setLang, LANGS } from "./i18n.js?v=1.1";
-import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.1";
-import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.1";
-import { rasterFrame, drawScaled, bumpRaster } from "./raster.js?v=1.1";
-import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.1";
+import * as M from "./model.js?v=1.2";
+import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.2";
+import { toLua, toJSON, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.2";
+import { decodeRects, rasterize } from "./mesh.js?v=1.2";
+import { Actor, drawActor, EASE } from "./sim.js?v=1.2";
+import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.2";
+import { t, lang, setLang, LANGS } from "./i18n.js?v=1.2";
+import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.2";
+import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.2";
+import { rasterFrame, drawScaled, bumpRaster } from "./raster.js?v=1.2";
+import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.2";
 
 const $ = s => document.querySelector(s);
 const el = (tag, attrs = {}, ...kids) => {
@@ -338,7 +338,7 @@ function refreshDraw() { buildToolbar(); if (S.tab === "draw") buildDraw(); upda
 function saveProject() { download(S.project.name + ".spriteforge.json", toJSON(S.project), "application/json"); toast(t("Project saved as {name}", { name: S.project.name + ".spriteforge.json" })); }
 function openProject() { pickFile(".json,.pixforge", f => f.text().then(x => { snapshot(); S.project = JSON.parse(x); S.sprite = null; fixSelection(); commit(); })); }
 function exportLua() { download("pixdata.lua", toLua(S.project)); toast(t("pixdata.lua exported")); }
-async function fetchText(path) { const r = await fetch(path + "?v=1.1"); if (!r.ok) throw new Error(path); return r.text(); }
+async function fetchText(path) { const r = await fetch(path + "?v=1.2"); if (!r.ok) throw new Error(path); return r.text(); }
 async function downloadRuntime() { try { download("pix.lua", await fetchText("lua/pix.lua")); } catch (e) { toast(e.message); } }
 async function downloadMain() { try { const s = sp(); let txt = await fetchText("lua/example_main.lua"); if (s) txt = txt.replace(/local SPRITE = "[^"]*"/, 'local SPRITE = "' + s.name + '"'); download("spriteforge_main.lua", txt); } catch (e) { toast(e.message); } }
 function pickFile(accept, cb) { const i = el("input", { type: "file", accept }); i.onchange = () => { for (const f of i.files) cb(f); }; i.click(); }
@@ -767,7 +767,7 @@ function scheduleCost() {
     const s = sp(); if (!s) return;
     try {
       if (!costWorker) {
-        costWorker = new Worker("js/costworker.js?v=1.1", { type: "module" });
+        costWorker = new Worker("js/costworker.js?v=1.2", { type: "module" });
         costWorker.onmessage = e => { if (e.data.id !== costSeq) return; if (e.data.error) S.cost = null; else { S.cost = e.data.cost; S.costTotal = e.data.total; } updateStatus(); };
         costWorker.onerror = () => { costWorker = null; };
       }
@@ -1228,9 +1228,10 @@ function buildGuide() {
   tab.append(
     sec(t("What is SpriteForge?"),
       p(t("SpriteForge makes custom pixel art usable in games that cannot load image files. Each sprite is stored as a short list of coloured rectangles; a small runtime (pix.lua) draws those rectangles as plain UI image controls. The result looks like a normal sprite and can be moved, scaled, tinted and animated.")),
-      p(t("It was built for Miliastra Wonderland (Genshin Impact UGC) Lua client scripts, where creators have no way to upload textures, but the format is engine-neutral: anything that can draw a coloured rectangle can draw a SpriteForge sprite.")),
+      p(t("It was built for Lua client scripts in game editors where creators have no way to upload textures, but the format is engine-neutral: anything that can draw a coloured rectangle can draw a SpriteForge sprite.")),
       el("div", { class: "row" }, btn(t("New sprite…"), () => openNewSprite(), { class: "primary" }), btn(t("Import image…"), openImport), btn(t("Add this example to my project"), addExampleToProject)),
-      el("p", { class: "help" }, t("SpriteForge is an unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by HoYoverse or COGNOSPHERE. Genshin Impact and Miliastra Wonderland are trademarks of their respective owners and are named here only to describe compatibility."))),
+      el("p", { class: "help" }, t("SpriteForge is an independent, unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by any game developer or publisher. All trademarks belong to their respective owners.")),
+      el("p", { class: "help" }, t("Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided as is, without warranty of any kind."))),
     sec(t("The screen"),
       p(t("Top: the menu (File, Edit, Sprite, View, Help) - every command is there with its shortcut. In the middle: the three steps Draw, Animate, Behave. Right: ? opens this guide, Export saves the Lua file.")),
       p(t("Under the menu: one tab per sprite. Left: the tools and your two colours - the left mouse button paints the primary colour, the right button the secondary one. Centre: the canvas; the mouse wheel zooms, Space+drag or the middle button moves the view. Bottom: the frames of the sprite.")),
@@ -1285,11 +1286,11 @@ function buildGuide() {
       pre('ENEMY\n  idle   clip idle    after 2-4 s -> walk;  on "hit" -> hurt;  when hp < 0.01 -> dead\n  walk   clip walk    after 1-3 s -> idle;  on "hit" -> hurt\n  hurt   clip shake   when the clip ends -> idle\n  dead   clip fadeout\n\nBUTTON\n  normal   clip -        on "enter" -> hover\n  hover    clip float    on "leave" -> normal;  on "tap" -> pressed\n  pressed  clip squash   when the clip ends -> normal\n\nCOIN\n  spin   clip spin      on "pick" -> gone\n  gone   clip fadeout'),
       tryIt()),
     sec(t("6. Put it in the game"),
-      p(t("pix.lua is the runtime for Miliastra Wonderland Lua client scripts (editor 7.1+). Other engines can read the same pixdata.lua: the format is described in the Docs.")),
+      p(t("pix.lua is the runtime for Lua client scripts. Other engines can read the same pixdata.lua: the format is described in the Docs.")),
       el("div", { class: "row" }, btn([icon("down", 16), t("Download pixdata.lua")], exportLua, { class: "primary" }), btn([icon("down", 16), "pix.lua"], downloadRuntime), btn([icon("down", 16), "spriteforge_main.lua"], downloadMain)),
       el("ol", { class: "steps" },
         el("li", {}, t("Put the three files into the external_lua_file folder of your stage. To find it: Client Script Resource Explorer → right-click → New Client Script, then copy the path from the address bar of the folder window."),
-          el("pre", {}, "...\\Genshin Impact\\BeyondLocal\\<UID>\\Beyond_Local_Save_Level\\<stage ID>\\external_lua_file")),
+          el("pre", {}, "<stage folder>\\external_lua_file")),
         el("li", {}, t("Client Script Resource Explorer → right-click → Batch Add Script Files → Add by Folder. A file without a mapping never reaches the game.")),
         el("li", {}, t("Manage UI Control Groups → Interface Layout → Add UI Control → Client Control Container. Name it PX_Root, then Canvas Settings → Go to Edit. In code, (0, 0) is the centre of this container; the canvas is 1600×900.")),
         el("li", {}, t("UI Control Group Library → Client Control Templates → new template of type Image. Write down its Control Template Index ID."),
@@ -1426,7 +1427,7 @@ function showWelcome() {
   const go = fn => () => { closeDialog(); fn(); };
   dlg.append(el("div", { class: "box welcome" },
     el("h2", {}, t("Welcome to SpriteForge")),
-    el("p", {}, t("Draw or import a small pixel sprite, give it colour variants, animate it, describe how it reacts - then export one Lua file your game draws with plain rectangles. Made for engines that cannot load images (such as Miliastra Wonderland), usable anywhere.")),
+    el("p", {}, t("Draw or import a small pixel sprite, give it colour variants, animate it, describe how it reacts - then export one Lua file your game draws with plain rectangles. Made for engines that cannot load images, usable anywhere.")),
     el("div", { class: "startbtns" },
       btn([icon("plus", 22), el("b", {}, t("Pixel art")), el("span", { class: "help" }, t("Blank canvas or a ready-made example"))], go(() => openNewSprite("pixel")), { class: "bigbtn" }),
       btn([icon("pencil", 22), el("b", {}, t("Drawing")), el("span", { class: "help" }, t("Free brush strokes, lines, circles and boxes, smooth at any size."))], go(() => openNewSprite("vector")), { class: "bigbtn" }),
@@ -1434,7 +1435,7 @@ function showWelcome() {
       btn([icon("play", 22), el("b", {}, t("Load the sample project")), el("span", { class: "help" }, t("A finished sprite with animation and behaviour"))], go(loadSample), { class: "bigbtn" }),
       btn([icon("gear", 22), el("b", {}, t("Read the Guide")), el("span", { class: "help" }, t("What SpriteForge is and how to use it"))], go(() => setTab("guide")), { class: "bigbtn" })),
     el("div", { class: "row" }, el("span", { class: "help" }, t("Language")), el("select", { onchange: e => { setLang(e.target.value); location.reload(); } }, ...LANGS.map(([c, n]) => el("option", { value: c, selected: c === lang }, n))), el("span", { class: "spacer" }), btn(t("Close"), closeDialog)),
-    el("div", { class: "help" }, t("Unofficial fan-made tool, not affiliated with HoYoverse."), " ", el("a", { href: "#", onclick: e => { e.preventDefault(); openAbout(); } }, t("About SpriteForge")))));
+    el("div", { class: "help" }, t("Unofficial fan-made tool, not affiliated with any game developer or publisher."), " ", el("a", { href: "#", onclick: e => { e.preventDefault(); openAbout(); } }, t("About SpriteForge")))));
   dlg.classList.add("on");
   try { localStorage.setItem("pixforge.welcomed", "1"); } catch (e) {}
 }
@@ -1491,7 +1492,7 @@ function openExport() {
     const code = [`local Px = require("pix")`, `local root = Px.root(script)`, `local a = Px.spawn(root, "${s.name}", 0, 0, { pal = "${S.previewPal}" })`,
       clips.length ? `a:play("${clips[0]}")` : null, b ? `a:fire("tap")` : null, b && Object.keys(b.params).length ? `a:set("${Object.keys(b.params)[0]}", 0.5)` : null,
       s.nine ? `local panel = Px.nine(root, "${s.name}", 0, 0, 420, 160)` : null, `-- OnUpdate(dt): Px.update(dt)`].filter(Boolean).join("\n");
-    box.append(el("details", {}, el("summary", {}, t("Use in Lua") + ": " + s.name), el("pre", {}, code), el("div", { class: "row" }, el("span", { class: "help" }, t("Step-by-step setup for Miliastra is in the Guide, section 6.")), btn(t("Guide"), () => { closeDialog(); setTab("guide"); }, { class: "small" }))));
+    box.append(el("details", {}, el("summary", {}, t("Use in Lua") + ": " + s.name), el("pre", {}, code), el("div", { class: "row" }, el("span", { class: "help" }, t("Step-by-step setup is in the Guide, section 6.")), btn(t("Guide"), () => { closeDialog(); setTab("guide"); }, { class: "small" }))));
   }
   box.append(el("div", { class: "row" }, el("a", { href: "docs/index.html", target: "_blank" }, t("Open the Docs")), el("span", { class: "spacer" }), btn(t("Close"), closeDialog)));
   dlg.append(box); dlg.classList.add("on");
@@ -1499,9 +1500,10 @@ function openExport() {
 
 function openAbout() {
   const dlg = $("#dialog"); dlg.innerHTML = "";
-  dlg.append(el("div", { class: "box" }, el("h2", {}, "SpriteForge 1.1"),
-    el("p", {}, t("SpriteForge is an unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by HoYoverse or COGNOSPHERE. Genshin Impact and Miliastra Wonderland are trademarks of their respective owners and are named here only to describe compatibility.")),
+  dlg.append(el("div", { class: "box" }, el("h2", {}, "SpriteForge 1.2"),
+    el("p", {}, t("SpriteForge is an independent, unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by any game developer or publisher. All trademarks belong to their respective owners.")),
     el("p", {}, t("SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002). Everything you draw and export is your own work.")),
+    el("p", {}, t("Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided as is, without warranty of any kind.")),
     el("p", { class: "help" }, t("Open source under the MIT licence."), " ", el("a", { href: "https://github.com/khruq/SpriteForge", target: "_blank", rel: "noopener" }, "github.com/khruq/SpriteForge")),
     el("div", { class: "row" }, el("span", { class: "spacer" }), btn(t("Close"), closeDialog))));
   dlg.classList.add("on");

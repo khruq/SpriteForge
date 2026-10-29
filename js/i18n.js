@@ -1,7 +1,7 @@
 // SpriteForge - UI strings. Keys are the English text; t() returns the translation
-// for the active language or the key itself. Languages follow the 15 Genshin
+// for the active language or the key itself. Languages: the 15 most common game
 // client languages. Placeholders look like {n}.
-import { STRINGS } from "./strings.js?v=1.1";
+import { STRINGS } from "./strings.js?v=1.2";
 
 export const LANGS = [
   ["en", "English"], ["zh-CN", "简体中文"], ["zh-TW", "繁體中文"], ["ja", "日本語"], ["ko", "한국어"],

@@ -18,16 +18,16 @@
 </head>
 <body>
 <h1>SpriteForge</h1>
-<p>Pixel sprites, colour variants, timeline clips and state-machine behaviours for games that cannot load image files. Every sprite becomes a small set of coloured rectangles drawn by one runtime file; the bundled runtime targets Miliastra Wonderland Lua client scripts, and the data format works with any engine that can draw a rectangle. The editor runs in 15 languages (auto-detected from the browser, switchable in the top bar). <a href="../index.html">Open the editor</a>.</p>
+<p>Pixel sprites, colour variants, timeline clips and state-machine behaviours for games that cannot load image files. Every sprite becomes a small set of coloured rectangles drawn by one runtime file; the bundled runtime targets Lua client scripts, and the data format works with any engine that can draw a rectangle. The editor runs in 15 languages (auto-detected from the browser, switchable in the top bar). <a href="../index.html">Open the editor</a>.</p>
 <nav><a href="#why">Why</a><a href="#setup">Editor setup</a><a href="#workflow">Workflow</a><a href="#drawing">Drawing</a><a href="#examples">Examples</a><a href="#api">Lua API</a><a href="#more">More</a><a href="#format">Data format</a><a href="#budget">Rectangle budget</a><a href="#faq">FAQ</a><a href="#legal">Legal</a></nav>
 
 <h2 id="why">Why this exists</h2>
-<p>Some platforms (Miliastra Wonderland among them) do not let creators upload images. Everything on screen is built from the built-in asset list. A plain square image, tinted and resized many times, is the only way to show something the platform has never seen - a mascot, a dish, a crop, a card frame. Doing that by hand is tedious and expensive: every rectangle is a UI control. SpriteForge turns pixel art into the fewest rectangles it can, keeps the result editable, and adds the things a sprite needs to live inside a game: recolourable palettes, layers, frame animation, procedural clips and a state machine the game drives with events.</p>
+<p>Some game editors do not let creators upload images. Everything on screen is built from the built-in asset list. A plain square image, tinted and resized many times, is the only way to show something the platform has never seen - a mascot, a dish, a crop, a card frame. Doing that by hand is tedious and expensive: every rectangle is a UI control. SpriteForge turns pixel art into the fewest rectangles it can, keeps the result editable, and adds the things a sprite needs to live inside a game: recolourable palettes, layers, frame animation, procedural clips and a state machine the game drives with events.</p>
 
-<h2 id="setup">Editor setup (Miliastra Wonderland, once per stage)</h2>
+<h2 id="setup">Editor setup (once per stage)</h2>
 <p>You need three files: <code>pixdata.lua</code> (Export in the editor), <code>pix.lua</code> (the runtime) and <code>spriteforge_main.lua</code> (the main script; the editor's Export window downloads it with your sprite name already filled in).</p>
 <ol>
-  <li>Put the three files into the <code>external_lua_file</code> folder of your stage: <code>...\Genshin Impact\BeyondLocal\&lt;UID&gt;\Beyond_Local_Save_Level\&lt;stage ID&gt;\external_lua_file</code>. To find it: Client Script Resource Explorer → right-click → New Client Script, then copy the path from the folder window.</li>
+  <li>Put the three files into the <code>external_lua_file</code> folder of your stage: <code>&lt;stage folder&gt;\external_lua_file</code>. To find it: Client Script Resource Explorer → right-click → New Client Script, then copy the path from the folder window.</li>
   <li>Client Script Resource Explorer → right-click → <b>Batch Add Script Files → Add by Folder</b>. A file without a mapping never reaches the game.</li>
   <li><b>Manage UI Control Groups → Interface Layout → Add UI Control → Client Control Container</b>, name it <code>PX_Root</code>, then Canvas Settings → Go to Edit. In code, (0, 0) is the centre of this container; the canvas is 1600×900.</li>
   <li><b>UI Control Group Library → Client Control Templates</b> → new template of type <b>Image</b>: name <code>T_PIXEL</code>, image <code>100001</code> (white square), size 10×10, pivot and anchor centred, Initially Visible on. Write down its <b>Control Template Index ID</b>.</li>
@@ -218,10 +218,11 @@ Px.burst(root, "coin", 0, 0, { count = 8 })</pre>
 <p><b>Can sprites be clicked?</b> Add your own hit control (a template with a raycast target) on top; SpriteForge rectangles have no raycast target so they never block taps.</p>
 <p><b>Can I use this outside the UI (3D world)?</b> No - Lua client scripts in 7.1 control UI only, so SpriteForge is for HUDs, cards, menus and games that live entirely in UI.</p>
 <p><b>Does it change my save or stage files?</b> No. It only produces Lua tables; nothing touches <code>.gia</code>/<code>.gil</code>.</p>
-<p><b>Which languages?</b> English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Русский, ไทย, Tiếng Việt, Deutsch, Bahasa Indonesia, Português, Türkçe, Italiano - the same set as Genshin Impact. The editor picks the browser language and remembers the one you choose.</p>
+<p><b>Which languages?</b> English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Русский, ไทย, Tiếng Việt, Deutsch, Bahasa Indonesia, Português, Türkçe, Italiano. The editor picks the browser language and remembers the one you choose.</p>
 <p><b>Where is my project stored?</b> In the browser (localStorage) while you work; use <b>Save</b> to download the <code>.spriteforge.json</code> file and keep it in your repository.</p>
 <h2 id="legal">Legal</h2>
-<p>SpriteForge is an unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by HoYoverse or COGNOSPHERE. Genshin Impact and Miliastra Wonderland are trademarks of their respective owners and are named here only to describe compatibility.</p>
-<p>SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002). The sample sprites and presets were made for SpriteForge. Everything you draw and export is your own work. The code is released under the MIT licence.</p>
+<p>SpriteForge is an independent, unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by any game developer or publisher. All trademarks belong to their respective owners.</p>
+<p>SpriteForge contains no game files, art or code. It refers to the built-in shapes of game editors only by their index numbers (100001, 100002). The sample sprites and presets were made for SpriteForge.</p>
+<p>Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided "as is", without warranty of any kind, under the MIT licence.</p>
 </body>
 </html>
