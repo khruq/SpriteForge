@@ -1,5 +1,5 @@
-import { compileShapes, drawPrims } from "./vector.js?v=1.2";
-import { cachedFrame, drawScaled } from "./raster.js?v=1.2";
+import { compileShapes, drawPrims } from "./vector.js?v=1.7";
+import { cachedFrame, drawScaled } from "./raster.js?v=1.7";
 // SpriteForge - runtime simulator. Mirrors lua/pix.lua: the same clip evaluation
 // and the same state machine, so what the browser preview shows is what the
 // Lua runtime does in the game.
@@ -118,6 +118,7 @@ export class Actor {
       const prev = this.t; let wrapped = false;
       this.t += dt;
       if (this.clip.loop && !this.once) { if (this.t >= dur) wrapped = true; this.t = this.t % dur; }
+      else if (this.ended) this.t = Math.min(this.t, dur);
       this.clipEvents(prev, Math.min(this.t, dur), wrapped);
       if (this.t >= dur && !this.ended && (!this.clip.loop || this.once)) {
         this.t = dur; this.ended = true; this.emit("clipEnd", this.clipName);

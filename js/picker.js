@@ -46,13 +46,13 @@ export function createPicker(initial, onChange, labels = {}) {
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(h / 360 * 200 - 2, 1, 4, 14);
   };
   const current = () => { const c = hsvToRgb(h, s, v); return [c[0], c[1], c[2], a]; };
-  const sync = (fromRgb) => {
+  const sync = (fromRgb, silent) => {
     const c = current();
     if (!fromRgb) { hex.value = toHex(c); rgbIn.forEach((i, k) => i.value = c[k]); }
     swatch.style.background = `linear-gradient(rgba(${c[0]},${c[1]},${c[2]},${a / 255}),rgba(${c[0]},${c[1]},${c[2]},${a / 255})), repeating-conic-gradient(#666 0 25%, #333 0 50%) 0 0/10px 10px`;
     alphaLabel.textContent = (labels.alpha || "Alpha") + " " + a;
     drawSv(); drawHue();
-    onChange(c);
+    if (!silent) onChange(c);
   };
   const setRgb = (r, g, b) => { [h, s, v] = rgbToHsv(r, g, b); sync(false); };
   let dragSv = false, dragHue = false;
@@ -67,8 +67,8 @@ export function createPicker(initial, onChange, labels = {}) {
   const row1 = document.createElement("div"); row1.className = "row"; row1.append(swatch, hex, ...rgbIn);
   const row2 = document.createElement("div"); row2.className = "row"; row2.append(alphaLabel, alpha);
   root.append(sv, hue, row1, row2);
-  sync(false);
-  return { el: root, get: current, set: (c) => { [h, s, v] = rgbToHsv(c[0], c[1], c[2]); a = c[3] ?? 255; alpha.value = a; sync(false); } };
+  sync(false, true);
+  return { el: root, get: current, set: (c) => { [h, s, v] = rgbToHsv(c[0], c[1], c[2]); a = c[3] ?? 255; alpha.value = a; sync(false, true); } };
 }
 
 // Lospec-style quick palettes (public domain / CC0 style ramps) for beginners.

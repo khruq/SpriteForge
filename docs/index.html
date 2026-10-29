@@ -25,20 +25,62 @@
 <p>Some game editors do not let creators upload images. Everything on screen is built from the built-in asset list. A plain square image, tinted and resized many times, is the only way to show something the platform has never seen - a mascot, a dish, a crop, a card frame. Doing that by hand is tedious and expensive: every rectangle is a UI control. SpriteForge turns pixel art into the fewest rectangles it can, keeps the result editable, and adds the things a sprite needs to live inside a game: recolourable palettes, layers, frame animation, procedural clips and a state machine the game drives with events.</p>
 
 <h2 id="setup">Editor setup (once per stage)</h2>
-<p>You need three files: <code>pixdata.lua</code> (Export in the editor), <code>pix.lua</code> (the runtime) and <code>spriteforge_main.lua</code> (the main script; the editor's Export window downloads it with your sprite name already filled in).</p>
+<h3>What you need</h3>
+<table>
+<tr><th>File</th><th>What it is</th><th>When to replace it</th></tr>
+<tr><td><code>pixdata.lua</code></td><td>Your sprites, colours, clips and behaviours. Made by Export in the editor.</td><td>After every change in SpriteForge.</td></tr>
+<tr><td><code>pix.lua</code></td><td>The runtime that draws and animates the sprites. The same for every project.</td><td>Only when SpriteForge itself updates.</td></tr>
+<tr><td><code>spriteforge_main.lua</code></td><td>The script attached to the container. It creates the sprite and calls <code>Px.update(dt)</code> every frame. Export downloads it with your sprite name already filled in.</td><td>Only if you want to change what it does.</td></tr>
+</table>
+<p>Do not rename <code>pix.lua</code> and <code>pixdata.lua</code>: the scripts load them with <code>require("pix")</code> and <code>require("pixdata")</code>.</p>
+<h3>Where the files go</h3>
+<pre>&lt;stage folder&gt;\external_lua_file\
+    pix.lua
+    pixdata.lua
+    spriteforge_main.lua</pre>
+<h3>Step by step</h3>
 <ol>
-  <li>Put the three files into the <code>external_lua_file</code> folder of your stage: <code>&lt;stage folder&gt;\external_lua_file</code>. To find it: Client Script Resource Explorer → right-click → New Client Script, then copy the path from the folder window.</li>
-  <li>Client Script Resource Explorer → right-click → <b>Batch Add Script Files → Add by Folder</b>. A file without a mapping never reaches the game.</li>
+  <li>Open your stage in the editor and save it once, so its folder exists.</li>
+  <li>Find the folder: Client Script Resource Explorer → right-click → <b>New Client Script</b>. A file window opens in the <code>external_lua_file</code> folder of this stage; copy its path from the address bar. The empty script it made can be deleted.</li>
+  <li>Copy the three files into that folder. If older copies are there, replace them.</li>
+  <li>Client Script Resource Explorer → right-click → <b>Batch Add Script Files → Add by Folder</b>. Check that <code>pix</code>, <code>pixdata</code> and <code>spriteforge_main</code> now appear in the list. A file without a mapping never reaches the game.</li>
   <li><b>Manage UI Control Groups → Interface Layout → Add UI Control → Client Control Container</b>, name it <code>PX_Root</code>, then Canvas Settings → Go to Edit. In code, (0, 0) is the centre of this container; the canvas is 1600×900.</li>
   <li><b>UI Control Group Library → Client Control Templates</b> → new template of type <b>Image</b>: name <code>T_PIXEL</code>, image <code>100001</code> (white square), size 10×10, pivot and anchor centred, Initially Visible on. Write down its <b>Control Template Index ID</b>.</li>
-  <li>On <code>PX_Root</code>: Script tab → Add Script → <code>spriteforge_main.lua</code>. Attach only this file; it loads <code>pix</code> and <code>pixdata</code> with <code>require</code>.</li>
-  <li>Right-click <code>spriteforge_main.lua</code> → <b>Edit Script Variables</b> → add <code>TPL_SPRITE</code>, type <b>Client Control ID</b>, value = the template index of <code>T_PIXEL</code>.</li>
-  <li>At the top of <code>spriteforge_main.lua</code>: <code>SPRITE</code> is the sprite name, <code>SIZE</code> the screen units per pixel.</li>
-  <li>Ctrl+S, restart the Sandbox completely, Test Play. Logs → Client Scripts should show <code>SpriteForge: &lt;name&gt; ready</code>. <code>no container or TPL_SPRITE</code> means the script variable is missing or has the wrong index.</li>
+  <li>On <code>PX_Root</code>: Script tab → Add Script → <code>spriteforge_main.lua</code>. Attach only this file; it loads <code>pix</code> and <code>pixdata</code> itself.</li>
+  <li>Right-click <code>spriteforge_main.lua</code> → <b>Edit Script Variables</b> → add <code>TPL_SPRITE</code>, type <b>Client Control ID</b>, value = the index of <code>T_PIXEL</code>.</li>
+  <li>At the top of <code>spriteforge_main.lua</code>: <code>SPRITE</code> is the sprite name exactly as on its tab, <code>SIZE</code> the screen units per pixel.</li>
+  <li>Ctrl+S, restart the Sandbox completely, Test Play. Logs → Client Scripts should show <code>SpriteForge: &lt;name&gt; ready</code>.</li>
 </ol>
-<p>After redrawing a sprite: export <code>pixdata.lua</code> again, replace the file, Ctrl+S and restart the Sandbox. Mappings and editor settings stay.</p>
+<h3>Several sprites in one stage</h3>
+<p>Tick all of them in Export so they go into one <code>pixdata.lua</code> (the game reads one per stage), then create each one in <code>init()</code> of the main script:</p>
+<pre>local hero, coin
+
+local function init()
+  local root = Px.root(script, "TPL_SPRITE")
+  if not root then return false end
+  hero = Px.spawn(root, "potion", -200, 0, { px = 6 })
+  coin = Px.spawn(root, "coin", 200, 0, { px = 4 })
+  return hero ~= nil
+end</pre>
+<h3>Clickable sprites (optional)</h3>
+<ol>
+  <li>Make a second template of type <b>CursorEventArea</b>, 10×10, centred, and write down its index.</li>
+  <li>Add a second script variable <code>TPL_HIT</code>, type Client Control ID, value = that index.</li>
+  <li>In the script: <code>hero:onTap(function(actor) actor:fire("tap") end)</code>. Without <code>TPL_HIT</code>, <code>Px.hit()</code> and <code>onTap()</code> simply return nil.</li>
+</ol>
+<h3>Updating</h3>
+<p>After redrawing: export <code>pixdata.lua</code> again, replace the file, Ctrl+S and restart the Sandbox. When SpriteForge itself updates, replace <code>pix.lua</code> as well. Mappings, the main script and editor settings stay.</p>
+<h3>If something is wrong</h3>
+<table>
+<tr><th>What you see</th><th>Cause and fix</th></tr>
+<tr><td>Nothing appears; the log says <code>no container or TPL_SPRITE</code></td><td>The <code>TPL_SPRITE</code> variable is missing or has a wrong number, or the script is not attached to <code>PX_Root</code>.</td></tr>
+<tr><td>Error: module <code>pix</code> or <code>pixdata</code> not found</td><td>The file is not mapped or was renamed. Repeat step 4.</td></tr>
+<tr><td>The old picture is still shown</td><td>Ctrl+S and restart the Sandbox completely; Test Play alone can keep old scripts.</td></tr>
+<tr><td>The sprite is in the wrong place</td><td>(0, 0) is the centre of <code>PX_Root</code>. Move the container or change the numbers in <code>Px.spawn</code>.</td></tr>
+<tr><td>Too big or too small</td><td>Change <code>SIZE</code> (or <code>px</code> in <code>Px.spawn</code>).</td></tr>
+<tr><td>The game gets slow</td><td>Check the cost in Export; keep everything visible at once under about 1200-2000 rectangles.</td></tr>
+</table>
 <div class="note"><code>script.object</code> can still be <code>nil</code> in the first frames of <code>OnStart</code>. <code>spriteforge_main.lua</code> retries for up to 120 frames; keep that pattern if you write your own main script. <code>Px.root(script, 123)</code> also accepts a template index number directly.</div>
-<p>Optional: a second template with a raycast target exposed as <code>TPL_HIT</code>. <code>Px.hit()</code> and <code>actor:onTap()</code> clone it for clickable areas; without it those calls return nil.</p>
 
 <h2 id="workflow">Workflow</h2>
 <ol>

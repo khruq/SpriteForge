@@ -508,6 +508,8 @@ function Actor:update(dt)
     if self.clip.loop and not self.once then
       if self.t >= dur then wrapped = true end
       self.t = self.t % dur
+    elseif self.ended then
+      self.t = min(self.t, dur)
     end
     self:clipEvents(prev, min(self.t, dur), wrapped)
     if self.t >= dur and not self.ended and (not self.clip.loop or self.once) then

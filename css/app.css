@@ -281,3 +281,8 @@ body.guidemode .right { display: none; }
 .animframes .fthumb canvas { max-width: 30px; max-height: 30px; }
 .gcard canvas, .vthumb { max-width: 64px; max-height: 64px; }
 #preview { max-height: 200px; }
+.timeline { overflow: hidden; }
+.track { grid-template-columns: 220px 1fr 28px; }
+.track > div:first-child { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+select.ease { max-width: 150px; }
+.toolbar { overflow-x: hidden; } .colors { margin-right: 4px; }

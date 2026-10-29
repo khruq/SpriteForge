@@ -1,14 +1,14 @@
-import * as M from "./model.js?v=1.2";
-import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.2";
-import { toLua, toJSON, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.2";
-import { decodeRects, rasterize } from "./mesh.js?v=1.2";
-import { Actor, drawActor, EASE } from "./sim.js?v=1.2";
-import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.2";
-import { t, lang, setLang, LANGS } from "./i18n.js?v=1.2";
-import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.2";
-import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.2";
-import { rasterFrame, drawScaled, bumpRaster } from "./raster.js?v=1.2";
-import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.2";
+import * as M from "./model.js?v=1.7";
+import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.7";
+import { toLua, toJSON, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.7";
+import { decodeRects, rasterize } from "./mesh.js?v=1.7";
+import { Actor, drawActor, EASE } from "./sim.js?v=1.7";
+import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.7";
+import { t, lang, setLang, LANGS } from "./i18n.js?v=1.7";
+import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.7";
+import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.7";
+import { rasterFrame, drawScaled, bumpRaster } from "./raster.js?v=1.7";
+import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.7";
 
 const $ = s => document.querySelector(s);
 const el = (tag, attrs = {}, ...kids) => {
@@ -87,6 +87,17 @@ function commit() { bumpRaster(); autosave(); renderAll(); }
 function undo() { const p = S.history.undo(S.project); if (p) { S.project = p; fixSelection(); commit(); } }
 function redo() { const p = S.history.redo(S.project); if (p) { S.project = p; fixSelection(); commit(); } }
 function sp() { return S.sprite ? S.project.sprites[S.sprite] : null; }
+function migrateProject(p) {
+  if (!p || !p.palettes) return p;
+  for (const [o, base] of [["hydro", "blue"], ["pyro", "red"], ["electro", "purple"]]) {
+    if (!p.palettes[o]) continue;
+    let n = base, i = 2; while (p.palettes[n]) n = base + i++;
+    p.palettes[n] = p.palettes[o]; delete p.palettes[o];
+    for (const c of Object.values(p.clips || {})) for (const tr of c.tracks || []) if (tr.prop === "pal") for (const k of tr.keys) if (k.v === o) k.v = n;
+    for (const b of Object.values(p.behaviors || {})) for (const st of Object.values(b.states || {})) if (st.pal === o) st.pal = n;
+  }
+  return p;
+}
 function fixSelection() {
   if (S.sprite && !S.project.sprites[S.sprite]) S.sprite = null;
   if (!S.sprite) { S.sprite = Object.keys(S.project.sprites)[0] || null; S.fitPending = true; }
@@ -336,9 +347,15 @@ function refreshDraw() { buildToolbar(); if (S.tab === "draw") buildDraw(); upda
 
 // ---------- file actions ----------
 function saveProject() { download(S.project.name + ".spriteforge.json", toJSON(S.project), "application/json"); toast(t("Project saved as {name}", { name: S.project.name + ".spriteforge.json" })); }
-function openProject() { pickFile(".json,.pixforge", f => f.text().then(x => { snapshot(); S.project = JSON.parse(x); S.sprite = null; fixSelection(); commit(); })); }
-function exportLua() { download("pixdata.lua", toLua(S.project)); toast(t("pixdata.lua exported")); }
-async function fetchText(path) { const r = await fetch(path + "?v=1.2"); if (!r.ok) throw new Error(path); return r.text(); }
+function openProject() { pickFile(".json,.pixforge", f => f.text().then(x => { snapshot(); S.project = migrateProject(JSON.parse(x)); S.sprite = null; fixSelection(); commit(); })); }
+function subProject(names) {
+  const keep = new Set(names), p = S.project;
+  return { ...p, sprites: Object.fromEntries(Object.entries(p.sprites).filter(([n]) => keep.has(n))),
+    clips: Object.fromEntries(Object.entries(p.clips).filter(([, c]) => keep.has(c.sprite))),
+    behaviors: Object.fromEntries(Object.entries(p.behaviors).filter(([n, b]) => keep.has(b.sprite || n))) };
+}
+function exportLua(names) { const proj = Array.isArray(names) ? subProject(names) : S.project; if (!Object.keys(proj.sprites).length) { toast(t("Select at least one sprite")); return; } download("pixdata.lua", toLua(proj)); toast(t("pixdata.lua exported")); }
+async function fetchText(path) { const r = await fetch(path + "?v=1.7"); if (!r.ok) throw new Error(path); return r.text(); }
 async function downloadRuntime() { try { download("pix.lua", await fetchText("lua/pix.lua")); } catch (e) { toast(e.message); } }
 async function downloadMain() { try { const s = sp(); let txt = await fetchText("lua/example_main.lua"); if (s) txt = txt.replace(/local SPRITE = "[^"]*"/, 'local SPRITE = "' + s.name + '"'); download("spriteforge_main.lua", txt); } catch (e) { toast(e.message); } }
 function pickFile(accept, cb) { const i = el("input", { type: "file", accept }); i.onchange = () => { for (const f of i.files) cb(f); }; i.click(); }
@@ -767,7 +784,7 @@ function scheduleCost() {
     const s = sp(); if (!s) return;
     try {
       if (!costWorker) {
-        costWorker = new Worker("js/costworker.js?v=1.2", { type: "module" });
+        costWorker = new Worker("js/costworker.js?v=1.7", { type: "module" });
         costWorker.onmessage = e => { if (e.data.id !== costSeq) return; if (e.data.error) S.cost = null; else { S.cost = e.data.cost; S.costTotal = e.data.total; } updateStatus(); };
         costWorker.onerror = () => { costWorker = null; };
       }
@@ -840,7 +857,7 @@ function tick(ts) {
     if (!S.actor || S.actor.sprite !== s) resetActor();
     const a = S.actor;
     let force = null;
-    if (S.tab === "animate") { if (S.clip && a.clipName !== S.clip) a.play(S.clip); if (S.playing) { a.update(dt); S.clipTime = a.t; } else { a.t = S.clipTime; a.ended = false; a.update(0); } updateTimelineCursor(); }
+    if (S.tab === "animate") { if (S.clip && a.clipName !== S.clip) a.play(S.clip); if (S.playing) { a.update(dt); S.clipTime = Math.min(a.t, a.clip ? a.clip.dur : a.t); if (a.ended && a.clip && !a.clip.loop) { S.replayWait = (S.replayWait || 0) + dt; if (S.replayWait > 0.6) { S.replayWait = 0; a.play(S.clip); S.clipTime = 0; } } } else { a.t = S.clipTime; a.ended = false; a.update(0); } updateTimelineCursor(); }
     else if (S.tab === "guide") { a.update(dt); } else if (S.tab === "behave") { a.update(dt); const st = $("#actorstate"); if (st) st.textContent = t("state") + ": " + a.state; }
     else { if (a.clipName) a.play(null); a.update(0); force = S.frame; if (S.framePlay) { frameClock += dt; force = Math.floor(frameClock * (s.fps || 8)) % s.frames.length; } }
     const W = previewCv.width, H = previewCv.height;
@@ -997,7 +1014,7 @@ function buildAnimate() {
     fr.append(el("span", { class: "help" }, c.tracks.some(x => x.prop === "frame") ? t("The highlighted frame is the one this clip shows right now.") : t("This clip does not switch frames. Add a 'frame' track or use + Clip from frames.")));
     main.append(fr);
     main.append(el("div", { class: "timeline", id: "timeline" }));
-    main.append(el("div", { class: "row" }, el("span", { class: "help" }, t("What should change?")), el("select", { id: "trackprop" }, ...PROPS.map(p => el("option", { value: p }, p + " - " + t(PROP_HELP[p]))), ...s.layers.map(L => el("option", { value: "layer:" + L.name }, "layer:" + L.name))),
+    main.append(el("div", { class: "row" }, el("span", { class: "help" }, t("What should change?")), el("select", { id: "trackprop" }, ...PROPS.map(p => el("option", { value: p }, p + " - " + t(PROP_HELP[p]))), ...s.layers.map(L => el("option", { value: "layer:" + L.name }, "layer:" + L.name + " - " + t("Shows (1) or hides (0) this layer")))),
       btn("+ " + t("Track"), () => { const p = $("#trackprop").value; if (c.tracks.some(x => x.prop === p)) { toast(t("This track already exists")); return; } snapshot(); c.tracks.push({ prop: p, ease: "outQuad", keys: [{ t: 0, v: defaultFor(p) }] }); commit(); }, { class: "small primary" })));
     main.append(el("div", { id: "keyedit" }));
     if (!c.tracks.length) main.append(el("b", {}, t("How to animate")), animSteps());
@@ -1007,10 +1024,12 @@ function buildAnimate() {
   if (c) { drawTimeline(); updateTimelineCursor(); }
 }
 
+const EASE_HELP = { linear: "Constant speed", inQuad: "Starts slow, speeds up", outQuad: "Starts fast, slows down", inOutQuad: "Slow start and end", inCubic: "Starts very slow, speeds up", outCubic: "Starts very fast, slows down", inOutCubic: "Very slow start and end", inSine: "Gently speeds up", outSine: "Gently slows down", inOutSine: "Gentle start and end", inBack: "Pulls back first, then moves", outBack: "Overshoots, then settles", outElastic: "Springs past and wobbles", outBounce: "Bounces at the end", step: "Jumps, no in-between" };
 function defaultFor(p) { if (p === "ev") return "event"; return p === "sx" || p === "sy" || p === "alpha" || p === "frame" ? 1 : p === "pal" ? "base" : p.startsWith("layer:") ? 1 : 0; }
 function updateTimelineCursor() {
   const c = S.project.clips[S.clip]; if (!c) return;
-  for (const cur of document.querySelectorAll("#timeline .cursor")) cur.style.left = (S.clipTime / c.dur * 100) + "%";
+  const pct = Math.max(0, Math.min(100, S.clipTime / c.dur * 100));
+  for (const cur of document.querySelectorAll("#timeline .cursor")) cur.style.left = pct + "%";
   const tl = $("#tlabel"); if (tl) tl.textContent = S.clipTime.toFixed(2) + "s";
   const ts = $("#tslider"); if (ts) ts.value = Math.round(S.clipTime / c.dur * 1000);
   const fi = S.actor ? S.actor.frameIndex() : 0;
@@ -1019,12 +1038,13 @@ function updateTimelineCursor() {
 function drawTimeline() {
   const c = S.project.clips[S.clip]; const box = $("#timeline"); if (!c || !box) return;
   box.innerHTML = "";
+  box.append(el("div", { class: "help" }, t("Easing (the list next to each track) is how the value moves between two keys: at constant speed, speeding up, slowing down, overshooting or bouncing.")));
   box.append(el("div", { class: "track" }, el("b", {}, t("track")), el("div", { class: "lane", style: "background:transparent", html: `<span class="help">0s</span><span class="help" style="float:right">${c.dur}s</span>` }), el("span")));
   c.tracks.forEach((tr, ti) => {
     const lane = el("div", { class: "lane", title: t("Click to add a key here"), onclick: e => { const r = lane.getBoundingClientRect(); const tt = Math.round((e.clientX - r.left) / r.width * c.dur * 100) / 100; snapshot(); const v = tr.keys.length ? tr.keys[tr.keys.length - 1].v : defaultFor(tr.prop); tr.keys.push({ t: tt, v }); tr.keys.sort((a, b) => a.t - b.t); S.selKey = { ti, ki: tr.keys.findIndex(k => k.t === tt) }; commit(); } });
     tr.keys.forEach((k, ki) => lane.append(el("div", { class: "key" + (S.selKey && S.selKey.ti === ti && S.selKey.ki === ki ? " on" : ""), style: `left:${k.t / c.dur * 100}%`, title: k.t + "s → " + k.v, onclick: e => { e.stopPropagation(); S.selKey = { ti, ki }; S.clipTime = k.t; drawTimeline(); renderRight(false); } })));
     lane.append(el("div", { class: "cursor", style: `left:${S.clipTime / c.dur * 100}%` }));
-    box.append(el("div", { class: "track" }, el("div", { title: t(PROP_HELP[tr.prop] || "Layer visibility: 1 = shown, 0 = hidden") }, tr.prop, " ", el("select", { class: "small", title: t("Easing between keys"), onchange: e => { snapshot(); tr.ease = e.target.value; autosave(); } }, ...Object.keys(EASE).map(e => el("option", { value: e, selected: e === (tr.ease || "linear") }, e)))), lane,
+    box.append(el("div", { class: "track" }, el("div", { title: t(PROP_HELP[tr.prop] || "Layer visibility: 1 = shown, 0 = hidden") }, tr.prop, " ", el("select", { class: "small ease", title: t("Easing between keys") + ": " + t(EASE_HELP[tr.ease || "linear"] || ""), onchange: e => { snapshot(); tr.ease = e.target.value; commit(); } }, ...Object.keys(EASE).map(e => el("option", { value: e, selected: e === (tr.ease || "linear"), title: t(EASE_HELP[e] || "") }, e + " - " + t(EASE_HELP[e] || ""))))), lane,
       btn("×", () => { snapshot(); c.tracks.splice(ti, 1); S.selKey = null; commit(); }, { class: "small danger", title: t("Remove track") })));
   });
   const ke = $("#keyedit"); ke.innerHTML = "";
@@ -1287,11 +1307,21 @@ function buildGuide() {
       tryIt()),
     sec(t("6. Put it in the game"),
       p(t("pix.lua is the runtime for Lua client scripts. Other engines can read the same pixdata.lua: the format is described in the Docs.")),
+      h(t("What you need")),
+      el("ul", { class: "steps" },
+        el("li", {}, el("b", {}, "pixdata.lua"), " - ", t("your sprites, colours, clips and behaviours. Made by Export; download it again after every change.")),
+        el("li", {}, el("b", {}, "pix.lua"), " - ", t("the runtime that draws the sprites. The same for every project; replace it only when SpriteForge itself updates.")),
+        el("li", {}, el("b", {}, "spriteforge_main.lua"), " - ", t("the script you attach to the container. It creates the sprite and updates it every frame. You can rename it or write your own."))),
+      p(t("Do not rename pix.lua and pixdata.lua: the scripts load them by these exact names.")),
       el("div", { class: "row" }, btn([icon("down", 16), t("Download pixdata.lua")], exportLua, { class: "primary" }), btn([icon("down", 16), "pix.lua"], downloadRuntime), btn([icon("down", 16), "spriteforge_main.lua"], downloadMain)),
+      h(t("Where the files go")),
+      el("pre", {}, "<stage folder>\\external_lua_file\\\n    pix.lua\n    pixdata.lua\n    spriteforge_main.lua"),
+      h(t("Step by step")),
       el("ol", { class: "steps" },
-        el("li", {}, t("Put the three files into the external_lua_file folder of your stage. To find it: Client Script Resource Explorer → right-click → New Client Script, then copy the path from the address bar of the folder window."),
-          el("pre", {}, "<stage folder>\\external_lua_file")),
-        el("li", {}, t("Client Script Resource Explorer → right-click → Batch Add Script Files → Add by Folder. A file without a mapping never reaches the game.")),
+        el("li", {}, t("Open your stage in the editor and save it once, so its folder exists.")),
+        el("li", {}, t("Find the folder: Client Script Resource Explorer → right-click → New Client Script. A file window opens in the external_lua_file folder of this stage; copy its path from the address bar. The empty script it made can be deleted.")),
+        el("li", {}, t("Copy the three files into that folder. If older copies are there, replace them.")),
+        el("li", {}, t("Client Script Resource Explorer → right-click → Batch Add Script Files → Add by Folder. Check that pix, pixdata and spriteforge_main now appear in the list. A file without a mapping never reaches the game.")),
         el("li", {}, t("Manage UI Control Groups → Interface Layout → Add UI Control → Client Control Container. Name it PX_Root, then Canvas Settings → Go to Edit. In code, (0, 0) is the centre of this container; the canvas is 1600×900.")),
         el("li", {}, t("UI Control Group Library → Client Control Templates → new template of type Image. Write down its Control Template Index ID."),
           el("pre", {}, "Name:    T_PIXEL\nImage:   100001  (white square)\nSize:    10 × 10\nPivot / Anchor: centre\nInitially Visible: on")),
@@ -1300,10 +1330,28 @@ function buildGuide() {
           el("pre", {}, "Name:   TPL_SPRITE\nType:   Client Control ID\nValue:  Control Template Index ID of T_PIXEL")),
         el("li", {}, t("At the top of spriteforge_main.lua: SPRITE is the sprite name exactly as on its tab, SIZE is how many screen units one pixel takes. The file downloaded from here already has the current sprite."),
           el("pre", {}, 'local SPRITE = "' + (sp() ? sp().name : "potion") + '"\nlocal SIZE = 6')),
-        el("li", {}, t("Ctrl+S, restart the Sandbox completely, Test Play. Logs → Client Scripts should show \"SpriteForge: <name> ready\". \"no container or TPL_SPRITE\" means the variable from step 6 is missing or has the wrong index."))),
-      p(t("Control it from code:")),
+        el("li", {}, t("Ctrl+S, restart the Sandbox completely, Test Play. Logs → Client Scripts should show \"SpriteForge: <name> ready\". \"no container or TPL_SPRITE\" means the variable from step 8 is missing or has the wrong index."))),
+      h(t("Control it from code:")),
       el("pre", {}, 'hero:pos(200, -100)\nhero:play("bounce")\nhero:tint("blue")\nhero:fire("tap")\nhero:set("hp", 0.2)'),
+      h(t("Several sprites in one stage")),
+      p(t("Tick all of them in Export so they go into one pixdata.lua. Then create each one in the main script, inside init():")),
+      el("pre", {}, 'local hero, coin\n\nlocal function init()\n  local root = Px.root(script, "TPL_SPRITE")\n  if not root then return false end\n  hero = Px.spawn(root, "potion", -200, 0, { px = 6 })\n  coin = Px.spawn(root, "coin", 200, 0, { px = 4 })\n  return hero ~= nil\nend'),
+      h(t("Clickable sprites (optional)")),
+      el("ol", { class: "steps" },
+        el("li", {}, t("Make a second template of type CursorEventArea, 10 × 10, centred, and write down its Control Template Index ID.")),
+        el("li", {}, t("Add a second script variable: TPL_HIT, type Client Control ID, value = that index.")),
+        el("li", {}, t("In the script:"), el("pre", {}, 'hero:onTap(function(actor) actor:fire("tap") end)'))),
+      h(t("Updating")),
       p(t("After redrawing: export pixdata.lua again, replace the file, Ctrl+S and restart the Sandbox. Mappings and editor settings stay.")),
+      p(t("When SpriteForge itself updates, replace pix.lua as well. Your main script and editor settings stay.")),
+      h(t("If something is wrong")),
+      el("ul", { class: "steps" },
+        el("li", {}, t("Nothing appears and the log says \"no container or TPL_SPRITE\": the TPL_SPRITE variable is missing or has a wrong number, or the script is not attached to PX_Root.")),
+        el("li", {}, t("An error says the module pix or pixdata was not found: the file is not mapped or was renamed. Repeat step 4.")),
+        el("li", {}, t("You still see the old picture: press Ctrl+S and restart the Sandbox completely; Test Play alone can keep old scripts.")),
+        el("li", {}, t("The sprite is in the wrong place: (0, 0) is the centre of PX_Root. Move the container or change the numbers in Px.spawn.")),
+        el("li", {}, t("The sprite is too big or too small: change SIZE (or px in Px.spawn).")),
+        el("li", {}, t("The game gets slow: check the cost in Export and keep everything visible at once under about 1200-2000 rectangles."))),
       p(t("Full API, data format and the editor setup checklist are in the Docs page.")), el("a", { href: "docs/index.html", target: "_blank" }, t("Open the Docs"))),
     sec(t("7. More for programmers"),
       p(t("Everything below works in the game through pix.lua. Put calls in your main script; Px.update(dt) in OnUpdate drives all of them.")),
@@ -1471,17 +1519,34 @@ function openExport() {
   let enc = null, err = null;
   try { enc = encodeProject(S.project); } catch (e) { err = e.message; }
   const box = el("div", { class: "box" }, el("h2", {}, t("Export")));
+  const sel = new Set(Object.keys(S.project.sprites));
+  const costOf = {};
+  const meter = el("div", { class: "meter" }), countLbl = el("span", { class: "help" });
+  const refresh = () => {
+    let tot = 0; for (const n of sel) tot += costOf[n] || 0;
+    meter.className = "meter " + (tot > 2000 ? "bad" : tot > 1200 ? "mid" : "ok");
+    meter.innerHTML = ""; meter.append(el("b", {}, tot + " " + t("rectangles")), el("span", {}, " · " + t("{n} of {total} sprites selected", { n: sel.size, total: Object.keys(S.project.sprites).length })));
+  };
   if (enc) {
-    const tot = enc.total, cls = tot > 2000 ? "bad" : tot > 1200 ? "mid" : "ok";
-    box.append(el("div", { class: "meter " + cls }, el("b", {}, tot + " " + t("rectangles")), el("span", {}, " · " + t("whole project"))),
-      el("div", { class: "help" }, t("Each rectangle becomes one UI image control in the game. Rule of thumb: keep everything visible at once under ~2000 on PC and ~1200 on phones. Frames of one sprite reuse the same controls.")));
+    box.append(meter, el("div", { class: "help" }, t("Each rectangle becomes one UI image control in the game. Rule of thumb: keep everything visible at once under ~2000 on PC and ~1200 on phones. Frames of one sprite reuse the same controls.")));
     const tb = el("table", { class: "keys" });
-    for (const s of Object.values(S.project.sprites)) { const n = enc.entries.filter(e => e.name === s.name || e.name.startsWith(s.name + "#") || e.name.startsWith(s.name + "/")); tb.append(el("tr", {}, el("td", {}, s.name), el("td", {}, s.w + "×" + s.h + " · " + s.frames.length + " " + t("frames")), el("td", {}, (n[0] ? n[0].count : 0) + " " + t("rectangles")))); }
-    box.append(tb);
+    const boxes = [];
+    for (const s of Object.values(S.project.sprites)) {
+      const n = enc.entries.filter(e => e.name === s.name || e.name.startsWith(s.name + "#") || e.name.startsWith(s.name + "/"));
+      costOf[s.name] = n.reduce((a, e) => a + e.count, 0);
+      const cb = el("input", { type: "checkbox", checked: true, onchange: e => { if (e.target.checked) sel.add(s.name); else sel.delete(s.name); refresh(); } });
+      boxes.push([cb, s.name]);
+      tb.append(el("tr", {}, el("td", {}, el("label", { class: "chk" }, cb, s.name)), el("td", {}, s.w + "×" + s.h + " · " + s.frames.length + " " + t("frames")), el("td", {}, costOf[s.name] + " " + t("rectangles"))));
+    }
+    const setAll = on => { for (const [cb, n] of boxes) { cb.checked = on; if (on) sel.add(n); else sel.delete(n); } refresh(); };
+    box.append(el("div", { class: "row" }, btn(t("Select all"), () => setAll(true), { class: "small" }), btn(t("Select none"), () => setAll(false), { class: "small" }),
+      sp() ? btn(t("Only the current sprite"), () => { setAll(false); const c = boxes.find(b => b[1] === S.sprite); if (c) { c[0].checked = true; sel.add(S.sprite); } refresh(); }, { class: "small" }) : null), tb,
+      el("div", { class: "help" }, t("Only the ticked sprites go into pixdata.lua, with their clips and behaviours. The game reads one pixdata.lua per stage, so put everything that stage needs into one export.")));
+    refresh();
   } else box.append(el("div", { class: "warn" }, err));
   const errors = M.validate(S.project); if (errors.length) box.append(el("div", { class: "warn" }, errors.join(" · ")));
   box.append(el("div", { class: "row" },
-    btn([icon("down", 16), t("Download pixdata.lua")], () => { exportLua(); }, { class: "primary big" }),
+    btn([icon("down", 16), t("Download pixdata.lua")], () => { exportLua([...sel]); }, { class: "primary big" }),
     btn([icon("down", 16), "pix.lua"], downloadRuntime, { title: t("Runtime that draws the sprites in the game") }),
     btn([icon("down", 16), "spriteforge_main.lua"], downloadMain, { title: t("Main script, already set to the current sprite") }),
     btn(t("Export PNG"), exportPng, { title: tip(t("Export PNG"), kb("exportPng")) }),
@@ -1500,7 +1565,7 @@ function openExport() {
 
 function openAbout() {
   const dlg = $("#dialog"); dlg.innerHTML = "";
-  dlg.append(el("div", { class: "box" }, el("h2", {}, "SpriteForge 1.2"),
+  dlg.append(el("div", { class: "box" }, el("h2", {}, "SpriteForge 1.7"),
     el("p", {}, t("SpriteForge is an independent, unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by any game developer or publisher. All trademarks belong to their respective owners.")),
     el("p", {}, t("SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002). Everything you draw and export is your own work.")),
     el("p", {}, t("Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided as is, without warranty of any kind.")),
@@ -1591,7 +1656,7 @@ function boot() {
   document.documentElement.lang = lang;
   registerCommands();
   const safe = /[?&]safe\b/.test(location.search);
-  S.project = safe ? null : autoload();
+  S.project = safe ? null : migrateProject(autoload());
   if (safe) setTimeout(() => toast(t("Started without the saved project. Open a project file or start a new one.")), 300);
   let fresh = false;
   if (!S.project) { S.project = sampleProject(); S.sprite = "potion"; S.key = "p2"; fresh = true; }

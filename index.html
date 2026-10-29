@@ -6,11 +6,11 @@
 <title>SpriteForge - pixel sprites, clips and behaviours for Lua</title>
 <meta name="description" content="Draw or import pixel art, give it colour variants, animate it on a timeline, add a state machine, and export one Lua file that any engine can draw with plain rectangles. Works in 15 languages.">
 <meta http-equiv="Cache-Control" content="no-cache">
-<script>window.SF_VERSION = "1.2";
+<script>window.SF_VERSION = "1.7";
 fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.json()).then(j => {
   if (j.v !== window.SF_VERSION) { try { if (sessionStorage.getItem("sf.reloaded") === j.v) return; sessionStorage.setItem("sf.reloaded", j.v); } catch (e) {} location.replace(location.pathname + "?v=" + j.v + location.hash); }
 }).catch(() => {});</script>
-<link rel="stylesheet" href="css/app.css?v=1.2">
+<link rel="stylesheet" href="css/app.css?v=1.7">
 </head>
 <body>
   <div class="menubar"></div>
@@ -26,6 +26,6 @@ fetch("version.json?t=" + Date.now(), { cache: "no-store" }).then(r => r.json())
   <div class="status"></div>
   <div id="dialog" class="dialog"></div>
   <div id="modal" class="modal"></div>
-  <script type="module" src="js/app.js?v=1.2"></script>
+  <script type="module" src="js/app.js?v=1.7"></script>
 </body>
 </html>

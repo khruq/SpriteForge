@@ -60,7 +60,7 @@ export function compileShape(s, out = []) {
     const ang = Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI;
     if (prevAng !== null) {
       let d = Math.abs(ang - prevAng) % 360; if (d > 180) d = 360 - d;
-      if (d > 12) out.push({ a: 2, x: R2(x0), y: R2(y0), w: R2(w), h: R2(w), r: 0, c: s.c });
+      if (d > 1) out.push({ a: 2, x: R2(x0), y: R2(y0), w: R2(w), h: R2(w), r: 0, c: s.c });
     }
     out.push({ a: 1, x: R2((x0 + x1) / 2), y: R2((y0 + y1) / 2), w: R2(len), h: R2(w), r: R2(ang), c: s.c });
     prevAng = ang;

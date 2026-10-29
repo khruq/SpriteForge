@@ -1,9 +1,9 @@
 // SpriteForge - exporters: pixdata.lua (runtime data), project JSON, PNG sheet.
-import { encodeSprite } from "./mesh.js?v=1.2";
-import { compileFrame, drawPrims } from "./vector.js?v=1.2";
-import { rasterFrame, drawScaled } from "./raster.js?v=1.2";
-import { composite, resolveColor, usedKeys } from "./model.js?v=1.2";
-import { downscale } from "./quantize.js?v=1.2";
+import { encodeSprite } from "./mesh.js?v=1.7";
+import { compileFrame, drawPrims } from "./vector.js?v=1.7";
+import { rasterFrame, drawScaled } from "./raster.js?v=1.7";
+import { composite, resolveColor, usedKeys } from "./model.js?v=1.7";
+import { downscale } from "./quantize.js?v=1.7";
 
 const luaStr = s => '"' + String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
 const luaNum = n => Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000);
