@@ -1,8 +1,9 @@
 // SpriteForge - exporters: pixdata.lua (runtime data), project JSON, PNG sheet.
-import { encodeSprite } from "./mesh.js?v=1.0";
-import { compileFrame, drawPrims } from "./vector.js?v=1.0";
-import { composite, resolveColor, usedKeys } from "./model.js?v=1.0";
-import { downscale } from "./quantize.js?v=1.0";
+import { encodeSprite } from "./mesh.js?v=1.1";
+import { compileFrame, drawPrims } from "./vector.js?v=1.1";
+import { rasterFrame, drawScaled } from "./raster.js?v=1.1";
+import { composite, resolveColor, usedKeys } from "./model.js?v=1.1";
+import { downscale } from "./quantize.js?v=1.1";
 
 const luaStr = s => '"' + String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
 const luaNum = n => Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000);
@@ -154,16 +155,11 @@ export function spriteToCanvas(project, sp, frame = 0, scale = 8, palName = "bas
     drawPrims(cv.getContext("2d"), compileFrame(sp, frame), key => resolveColor(project, key, palName), 0, 0, k);
     return cv;
   }
-  cv.width = sp.w * scale; cv.height = sp.h * scale;
-  const ctx = cv.getContext("2d");
-  const grid = composite(sp, frame);
-  for (let y = 0; y < sp.h; y++) for (let x = 0; x < sp.w; x++) {
-    const k = grid[y][x];
-    if (k == null) continue;
-    const c = resolveColor(project, k, palName);
-    ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${(c[3] ?? 255) / 255})`;
-    ctx.fillRect(x * scale, y * scale, scale, scale);
-  }
+  const names = sp.layers.filter(L => L.visible).map(L => L.name);
+  const src = rasterFrame(project, sp, frame, palName, names);
+  if (scale === 1) return src;
+  cv.width = Math.max(1, Math.round(sp.w * scale)); cv.height = Math.max(1, Math.round(sp.h * scale));
+  drawScaled(cv.getContext("2d"), src, 0, 0, cv.width, cv.height);
   return cv;
 }
 

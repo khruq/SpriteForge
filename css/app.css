@@ -276,3 +276,8 @@ body.guidemode .right { display: none; }
 .kindbtn { flex-direction: column; align-items: flex-start; gap: 3px; padding: 10px 12px; border-radius: 10px; text-align: left; }
 .kindbtn.on { background: rgba(242,186,66,.15); color: var(--ink); border-color: var(--acc); }
 .kindbtn.on .help { color: var(--ink); }
+.doctab canvas { max-width: 20px; max-height: 20px; width: auto; height: auto; flex: none; }
+.fthumb canvas { max-width: 44px; max-height: 44px; width: auto; height: auto; display: block; }
+.animframes .fthumb canvas { max-width: 30px; max-height: 30px; }
+.gcard canvas, .vthumb { max-width: 64px; max-height: 64px; }
+#preview { max-height: 200px; }

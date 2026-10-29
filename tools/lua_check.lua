@@ -18,68 +18,57 @@ Color = function(r, g, b, a) return { r, g, b, a } end
 local script = { object = newCtrl(), GetParam = function(_, n) if n == "TPL_SPRITE" then return 12345 elseif n == "TPL_HIT" then return 777 end end }
 
 local Px = require("pix")
+local DATA = require("pixdata")
 local root = Px.root(script)
 assert(root, "root")
-local a = Px.spawn(root, "slime", 10, 20, { pal = "hydro" })
+local a = Px.spawn(root, "potion", 10, 20, { pal = "blue" })
 assert(a.stateName == "idle", "initial state")
-local s = Px.get("slime")
-local N = require("pixdata").S["slime"].n
+local s = Px.get("potion")
+local N = DATA.S["potion"].n
 assert(#s.rects == N, "rect count " .. #s.rects)
-assert(calls.spawn == 2 + N, "spawned nodes: " .. calls.spawn)  -- actor group + body + rects
--- hydro palette applied to p2
-local hydroP2 = Px.color("p2", "hydro")
-assert(hydroP2[1] == 100 and hydroP2[2] == 180, "palette override")
--- clip evaluation matches JS: idle sy at t=0.8 is 1.05, at 0.4 inOutQuad(0.5)=0.5 -> 1.025
-local props = Px.evalClip(D and D.C["slime.idle"] or require("pixdata").C["slime.idle"], 0.8)
-assert(math.abs(props.sy - 1.05) < 1e-9, "sy at 0.8")
-props = Px.evalClip(require("pixdata").C["slime.idle"], 0.4)
-assert(math.abs(props.sy - 1.025) < 1e-9, "sy at 0.4: " .. props.sy)
--- behaviour: tap -> happy (one-shot 0.6s) -> end -> idle
+local spawnedByActor = 3 + N + DATA.S["potion/label"].n
+assert(calls.spawn == spawnedByActor, "spawned nodes: " .. calls.spawn .. " expected " .. spawnedByActor)
+local blueP2 = Px.color("p2", "blue")
+assert(blueP2[1] == 100 and blueP2[2] == 170 and blueP2[3] == 250, "palette override")
+local props = Px.evalClip(DATA.C["potion.idle"], 0.3)
+assert(math.abs(props.y - 1) < 1e-9 and props.frame == 1, "idle at 0.3: y " .. props.y)
+props = Px.evalClip(DATA.C["potion.idle"], 0.7)
+assert(props.frame == 2, "idle switches to frame 2")
 a:fire("tap")
-assert(a.stateName == "happy", "tap -> happy")
+assert(a.stateName == "pop", "tap -> pop")
+Px.update(0.1)
+assert(a.props.pal == "gold", "pal track while pop plays")
 local states = {}
 a:on("state", function(_, n) states[#states + 1] = n end)
-for _ = 1, 40 do Px.update(0.05) end
-assert(a.stateName == "idle", "returned to idle, got " .. tostring(a.stateName))
+for _ = 1, 20 do Px.update(0.05) end
+assert(a.stateName == "idle", "pop ends -> idle, got " .. tostring(a.stateName))
 assert(states[1] == "idle", "state event")
--- pal track inside happy switched palette to pyro while playing
-a:fire("tap") Px.update(0.1)
-assert(a.props.pal == "pyro", "pal track")
--- param condition
-a:state("idle")
-a:set("energy", 0.1)
-assert(a.stateName == "tired", "energy < 0.3 -> tired")
-a:set("energy", 0.9)
-assert(a.stateName == "idle", "energy > 0.5 -> idle")
--- frame names
-assert(a:frameName(1) == "slime" and a:frameName(2) == "slime", "1-frame sprite wraps")
--- fill
-local f = Px.fill(root, "slime", 0, 0, 0.5)
-assert(#f.sprite.rects > 0 and #f.sprite.rects <= 23, "fill rects")
--- destroy releases nodes
-local before = calls.destroy
+a:set("charge", 0.1)
+assert(a.stateName == "empty", "charge < 0.2 -> empty")
+a:set("charge", 0.9)
+assert(a.stateName == "idle", "charge > 0.5 -> idle")
+assert(a:frameName(1) == "potion" and a:frameName(2) == "potion#2" and a:frameName(3) == "potion", "frame names wrap")
+local f = Px.fill(root, "potion", 0, 0, 0.5)
+assert(#f.sprite.rects > 0 and #f.sprite.rects <= N, "fill rects")
+local before0 = calls.destroy
 a:destroy()
-assert(calls.destroy - before == 2 + N, "destroyed " .. (calls.destroy - before))
+assert(calls.destroy - before0 == spawnedByActor, "destroyed " .. (calls.destroy - before0))
 assert(Px.actors[a] == nil, "actor unregistered")
--- hit areas and tap
 local tapped = 0
-local b = Px.spawn(root, "slime", 0, 0)
+local b = Px.spawn(root, "potion", 0, 0)
 b:onTap(function() tapped = tapped + 1 end)
 assert(b.hitNode and b.hitNode.ctrl, "hit node created from TPL_HIT")
--- autotiles: frames beyond 1 fall back to name#k which may not exist -> draws nothing but no error
 local grid = { [0] = { [0] = true, [1] = true }, [1] = { [0] = true } }
-local tl = Px.tiles(root, "slime", grid, 64)
+local tl = Px.tiles(root, "potion", grid, 64)
 assert(#tl.tiles == 3, "3 tiles placed")
--- nine-slice on a sprite without insets returns an empty group, no error
-local nine = Px.nine(root, "slime", 0, 0, 300, 120)
+local nine = Px.nine(root, "potion", 0, 0, 300, 120)
 assert(nine and nine.ctrl, "nine group")
 -- lod fallback: no @2 variant -> normal sprite
-local d2 = Px.draw(root, "slime", 0, 0, { lod = "half" })
-assert(d2.sprite and d2.sprite.name == "slime", "lod fallback")
-local DATA = require("pixdata")
-DATA.C["slime.evtest"] = { dur = 1, loop = true, tracks = { { prop = "ev", ease = "step", keys = { {0, "start"}, {0.5, "step"} } }, { prop = "y", ease = "linear", keys = { {0, 0}, {1, 10} } } } }
-DATA.C["slime.once"] = { dur = 0.4, loop = false, tracks = { { prop = "x", ease = "linear", keys = { {0, 0}, {0.4, 4} } } } }
-local e = Px.spawn(root, "slime", 0, 0, { behavior = "none" })
+local d2 = Px.draw(root, "potion", 0, 0, { lod = "half" })
+assert(d2.sprite and d2.sprite.name == "potion", "lod fallback")
+DATA.C["potion.evtest"] = { dur = 1, loop = true, tracks = { { prop = "ev", ease = "step", keys = { {0, "start"}, {0.5, "step"} } }, { prop = "y", ease = "linear", keys = { {0, 0}, {1, 10} } } } }
+DATA.C["potion.once"] = { dur = 0.4, loop = false, tracks = { { prop = "x", ease = "linear", keys = { {0, 0}, {0.4, 4} } } } }
+local e = Px.spawn(root, "potion", 0, 0, { behavior = "none" })
 local got = {}
 e:on("event", function(_, name) got[#got + 1] = name end)
 e:play("evtest")
@@ -92,8 +81,8 @@ local doneOnce = false
 e:playOnce("once", function() doneOnce = true end)
 e:update(0.2) assert(e.clipName == "once", "once playing")
 e:update(0.3) assert(doneOnce and e.clipName == "evtest", "playOnce returns to previous clip: " .. tostring(e.clipName))
-assert(math.abs(Px.evalClip(DATA.C["slime.evtest"], 0.5).y - 5) < 1e-9 and Px.evalClip(DATA.C["slime.evtest"], 0.5).ev == nil, "ev track not a prop")
-local mv = Px.draw(root, "slime", 0, 0)
+assert(math.abs(Px.evalClip(DATA.C["potion.evtest"], 0.5).y - 5) < 1e-9 and Px.evalClip(DATA.C["potion.evtest"], 0.5).ev == nil, "ev track not a prop")
+local mv = Px.draw(root, "potion", 0, 0)
 local arrived = false
 mv:moveTo(100, 50, 0.5, "linear", function() arrived = true end)
 Px.update(0.25) assert(math.abs(mv.x - 50) < 1e-6 and math.abs(mv.y - 25) < 1e-6, "tween halfway")
@@ -105,7 +94,7 @@ Px.update(0.15) assert(not fired and ticks == 1, "timers early")
 Px.update(0.1) assert(fired and ticks == 2, "timers fired")
 Px.cancel(ev) Px.update(0.5) assert(ticks == 2, "every cancelled")
 local before = calls.spawn
-local parts = Px.burst(root, "slime", 0, 0, { count = 5, life = 0.3 })
+local parts = Px.burst(root, "potion", 0, 0, { count = 5, life = 0.3 })
 assert(#parts == 5 and calls.spawn > before, "burst spawned")
 local destroyedBefore = calls.destroy
 Px.update(0.5)

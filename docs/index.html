@@ -19,7 +19,7 @@
 <body>
 <h1>SpriteForge</h1>
 <p>Pixel sprites, colour variants, timeline clips and state-machine behaviours for games that cannot load image files. Every sprite becomes a small set of coloured rectangles drawn by one runtime file; the bundled runtime targets Miliastra Wonderland Lua client scripts, and the data format works with any engine that can draw a rectangle. The editor runs in 15 languages (auto-detected from the browser, switchable in the top bar). <a href="../index.html">Open the editor</a>.</p>
-<nav><a href="#why">Why</a><a href="#setup">Editor setup</a><a href="#workflow">Workflow</a><a href="#drawing">Drawing</a><a href="#examples">Examples</a><a href="#api">Lua API</a><a href="#more">More</a><a href="#format">Data format</a><a href="#budget">Rectangle budget</a><a href="#faq">FAQ</a></nav>
+<nav><a href="#why">Why</a><a href="#setup">Editor setup</a><a href="#workflow">Workflow</a><a href="#drawing">Drawing</a><a href="#examples">Examples</a><a href="#api">Lua API</a><a href="#more">More</a><a href="#format">Data format</a><a href="#budget">Rectangle budget</a><a href="#faq">FAQ</a><a href="#legal">Legal</a></nav>
 
 <h2 id="why">Why this exists</h2>
 <p>Some platforms (Miliastra Wonderland among them) do not let creators upload images. Everything on screen is built from the built-in asset list. A plain square image, tinted and resized many times, is the only way to show something the platform has never seen - a mascot, a dish, a crop, a card frame. Doing that by hand is tedious and expensive: every rectangle is a UI control. SpriteForge turns pixel art into the fewest rectangles it can, keeps the result editable, and adds the things a sprite needs to live inside a game: recolourable palettes, layers, frame animation, procedural clips and a state machine the game drives with events.</p>
@@ -43,7 +43,7 @@
 <h2 id="workflow">Workflow</h2>
 <ol>
   <li><b>Draw or import.</b> Import a picture (downscaled, quantised to N colours, optional outline), a sprite sheet (cells become frames), ASCII rows with a legend, or a previously exported <code>pixdata.lua</code>. Or draw from scratch with pencil, fill, line, rectangle, mirror-X and layers.</li>
-  <li><b>Palette.</b> Keys named <code>p0…p3</code> and <code>q0…q3</code> are tint slots. Define override palettes (<code>hydro</code>, <code>pyro</code>, <code>gold</code>…) that only replace those keys; one sprite then has as many variants as you have palettes, at no extra cost.</li>
+  <li><b>Palette.</b> Keys named <code>p0…p3</code> and <code>q0…q3</code> are tint slots. Define override palettes (<code>blue</code>, <code>red</code>, <code>gold</code>…) that only replace those keys; one sprite then has as many variants as you have palettes, at no extra cost.</li>
   <li><b>Layers.</b> Mark a layer <b>S</b> (separate) to export it as its own sprite <code>name/layer</code>. The runtime can show and hide it per state (hat on, hat off) or you can draw it alone.</li>
   <li><b>Animate.</b> A clip is a timeline with tracks on <code>x y sx sy rot alpha frame pal layer:&lt;name&gt;</code>. Loop clips (idle, float) run forever; one-shot clips (squash, celebrate, fadeout) fire an <code>end</code> event. Presets give you idle/bounce/squash/shake/float/fadeout/frames in one click.</li>
   <li><b>Behave.</b> States choose a clip, a palette and layer visibility; transitions fire on game events (<code>tap</code>), on timers (random 3-6 s), when a clip ends, or when a parameter crosses a threshold (<code>energy &lt; 0.3</code>). The preview panel lets you fire events and drag parameters.</li>
@@ -145,17 +145,17 @@ local root = Px.root(script)                -- container object; also reads TPL_
 -- static sprites
 local n = Px.draw(root, "crate", x, y, { px = 4, pal = "base", flip = false, alpha = 1 })
 n:pos(x, y)  n:scale(sx, sy)  n:rot(deg)  n:show(bool)  n:front()  n:destroy()
-n:tint("pyro")  n:alpha(0.5)  n:flip(true)  n:repaint("crate#2")
+n:tint("red")  n:alpha(0.5)  n:flip(true)  n:repaint("crate#2")
 
 -- actors: sprite + clips + behaviour
-local a = Px.spawn(root, "slime", x, y, { pal = "hydro", px = 4, behavior = "slime" })
-a:play("bounce")            -- clip name, or "slime.bounce"
+local a = Px.spawn(root, "potion", x, y, { pal = "blue", px = 4, behavior = "potion" })
+a:play("bounce")            -- clip name, or "potion.bounce"
 a:state("idle")             -- force a state
 a:fire("tap")               -- event -> transition
 a:set("energy", 0.2)        -- parameter -> conditional transition
 a:get("energy")
 a:layer("hat", false)       -- show/hide a separate layer
-a:tint("electro")           -- instance palette (state/clip palettes win while active)
+a:tint("green")             -- instance palette (state/clip palettes win while active)
 a:on("state", function(actor, name) end)
 a:on("clipEnd", function(actor, clip) end)
 a.stateName, a.props.x, a.props.frame   -- read-only inspection
@@ -209,7 +209,7 @@ Px.burst(root, "coin", 0, 0, { count = 8 })</pre>
 <tr><td><code>D.C["sprite.clip"]</code></td><td><code>{ dur, loop, tracks = { { prop, ease, keys = { {t, v}, … } } } }</code>. Numeric props interpolate with the track ease; <code>frame</code>, <code>pal</code> and <code>layer:*</code> step; <code>ev</code> keys are event names sent when playback passes them.</td></tr>
 <tr><td><code>D.B[name]</code></td><td><code>{ initial, params, states = { name = { clip, pal, layers, on = { {ev=…}|{timer={a,b}}|{param=…, lt|gt=…}, to=… } } } }</code></td></tr>
 </table>
-<p>The encoder paints larger colour regions first and lets later colours overlap them, which is why a 16×14 slime costs ~23 rectangles instead of ~120. Translucent keys (alpha &lt; 255) are never painted under other colours. The format is stable across versions: files exported by older SpriteForge builds keep working with newer <code>pix.lua</code>.</p>
+<p>The encoder paints larger colour regions first and lets later colours overlap them, which is why the 12×16 sample potion costs 34 rectangles instead of 150. Translucent keys (alpha &lt; 255) are never painted under other colours. The format is stable across versions: files exported by older SpriteForge builds keep working with newer <code>pix.lua</code>.</p>
 
 <h2 id="budget">Rectangle budget</h2>
 <p>Each rectangle is one UI control. From shipped games on the platform: keep live SpriteForge rectangles under roughly <b>2 000 on PC</b> and <b>1 200 on phones</b> for a steady 60 fps. The editor shows the cost of every sprite and of the whole project; the runtime exposes <code>Px.count</code>. Ways to spend less: fewer colours (the <b>Simplify</b> button merges rare colours), flat fills instead of noise, outlines only where they read, <code>px</code> for size instead of resolution, the half-res LOD for small copies, and destroying sprites that leave the screen.</p>
@@ -220,5 +220,8 @@ Px.burst(root, "coin", 0, 0, { count = 8 })</pre>
 <p><b>Does it change my save or stage files?</b> No. It only produces Lua tables; nothing touches <code>.gia</code>/<code>.gil</code>.</p>
 <p><b>Which languages?</b> English, 简体中文, 繁體中文, 日本語, 한국어, Español, Français, Русский, ไทย, Tiếng Việt, Deutsch, Bahasa Indonesia, Português, Türkçe, Italiano - the same set as Genshin Impact. The editor picks the browser language and remembers the one you choose.</p>
 <p><b>Where is my project stored?</b> In the browser (localStorage) while you work; use <b>Save</b> to download the <code>.spriteforge.json</code> file and keep it in your repository.</p>
+<h2 id="legal">Legal</h2>
+<p>SpriteForge is an unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by HoYoverse or COGNOSPHERE. Genshin Impact and Miliastra Wonderland are trademarks of their respective owners and are named here only to describe compatibility.</p>
+<p>SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002). The sample sprites and presets were made for SpriteForge. Everything you draw and export is your own work. The code is released under the MIT licence.</p>
 </body>
 </html>

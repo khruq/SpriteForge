@@ -1,13 +1,14 @@
-import * as M from "./model.js?v=1.0";
-import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.0";
-import { toLua, toJSON, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.0";
-import { decodeRects, rasterize } from "./mesh.js?v=1.0";
-import { Actor, drawActor, EASE } from "./sim.js?v=1.0";
-import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.0";
-import { t, lang, setLang, LANGS } from "./i18n.js?v=1.0";
-import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.0";
-import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.0";
-import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.0";
+import * as M from "./model.js?v=1.1";
+import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.1";
+import { toLua, toJSON, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.1";
+import { decodeRects, rasterize } from "./mesh.js?v=1.1";
+import { Actor, drawActor, EASE } from "./sim.js?v=1.1";
+import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.1";
+import { t, lang, setLang, LANGS } from "./i18n.js?v=1.1";
+import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.1";
+import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.1";
+import { rasterFrame, drawScaled, bumpRaster } from "./raster.js?v=1.1";
+import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.1";
 
 const $ = s => document.querySelector(s);
 const el = (tag, attrs = {}, ...kids) => {
@@ -63,7 +64,7 @@ function icon(name, size = 18) {
   s.innerHTML = `<svg viewBox="0 0 16 16" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">${ICONS[name]}</svg>`;
   return s;
 }
-const ts = (s, n) => s.kind === "vector" ? n / Math.max(s.w, s.h) : Math.max(1, Math.floor(n / Math.max(s.w, s.h)));
+const ts = (s, n) => { const v = n / Math.max(s.w, s.h); return s.kind === "vector" || v < 1 ? v : Math.floor(v); };
 const ibtn = (name, onclick, title, opts = {}) => btn(icon(name, opts.size || 16), onclick, { ...opts, class: "ibtn " + (opts.class || ""), title });
 
 const TOOLS = [["pencil", "Pencil", "B"], ["eraser", "Eraser", "E"], ["fill", "Fill", "G"], ["pick", "Pick colour", "I"], ["line", "Line", "L"], ["rect", "Rectangle", "U"], ["ellipse", "Ellipse", "C"], ["move", "Move pixels", "V"]];
@@ -78,10 +79,11 @@ const S = {
 };
 
 // ---------- persistence ----------
-function autosave() { try { localStorage.setItem("pixforge.project", JSON.stringify(S.project)); } catch (e) {} }
+let storageWarned = false;
+function autosave() { try { localStorage.setItem("pixforge.project", JSON.stringify(S.project)); } catch (e) { if (!storageWarned) { storageWarned = true; toast(t("The project is too big for the browser storage. Save it to a file (Ctrl+S).")); } } }
 function autoload() { try { const x = localStorage.getItem("pixforge.project"); if (x) { const p = JSON.parse(x); if (p.format === "pixforge") return p; } } catch (e) {} return null; }
 function snapshot() { S.history.push(S.project); }
-function commit() { autosave(); renderAll(); }
+function commit() { bumpRaster(); autosave(); renderAll(); }
 function undo() { const p = S.history.undo(S.project); if (p) { S.project = p; fixSelection(); commit(); } }
 function redo() { const p = S.history.redo(S.project); if (p) { S.project = p; fixSelection(); commit(); } }
 function sp() { return S.sprite ? S.project.sprites[S.sprite] : null; }
@@ -210,6 +212,7 @@ function registerCommands() {
   cmd("shortcuts", "Keyboard shortcuts", ["?"], showShortcuts);
   cmd("docs", "Docs", [], () => window.open("docs/index.html", "_blank"));
   cmd("welcome", "Welcome screen", [], showWelcome);
+  cmd("about", "About SpriteForge", [], openAbout);
   for (const [id, label, key] of TOOLS) cmd("tool_" + id, label, [key], () => setTool(id), { when: draw, group: "tools" });
   cmd("swap", "Swap primary and secondary colour", ["X"], swapColors, { when: draw, group: "tools" });
   cmd("brushDown", "Smaller brush", ["["], () => setBrush(S.brush - 1), { when: draw, group: "tools" });
@@ -270,7 +273,7 @@ const MENUS = [
   ["Edit", ["undo", "redo", "-", "clear", "flipH", "flipV", "-", "outline", "despeckle", "simplify", "-", "shortcuts"]],
   ["Sprite", ["dupSprite", "renameSprite", "delSprite", "props", "scaleUp", "scaleDown", "-", "dupFrame", "emptyFrame", "delFrame", "-", "newLayer", "renameLayer", "delLayer", "layerUp", "layerDown"]],
   ["View", ["zoomIn", "zoomOut", "fit", "-", "toggleGrid", "toggleOnion", "toggleMirror", "-", "prevFrame", "nextFrame", "firstFrame", "lastFrame", "playFrames", "-", "wsDraw", "wsAnimate", "wsBehave"]],
-  ["Help", ["wsGuide", "shortcuts", "docs", "welcome"]],
+  ["Help", ["wsGuide", "shortcuts", "docs", "welcome", "-", "about"]],
 ];
 function buildMenubar() {
   const bar = $(".menubar"); bar.innerHTML = "";
@@ -335,7 +338,7 @@ function refreshDraw() { buildToolbar(); if (S.tab === "draw") buildDraw(); upda
 function saveProject() { download(S.project.name + ".spriteforge.json", toJSON(S.project), "application/json"); toast(t("Project saved as {name}", { name: S.project.name + ".spriteforge.json" })); }
 function openProject() { pickFile(".json,.pixforge", f => f.text().then(x => { snapshot(); S.project = JSON.parse(x); S.sprite = null; fixSelection(); commit(); })); }
 function exportLua() { download("pixdata.lua", toLua(S.project)); toast(t("pixdata.lua exported")); }
-async function fetchText(path) { const r = await fetch(path + "?v=1.0"); if (!r.ok) throw new Error(path); return r.text(); }
+async function fetchText(path) { const r = await fetch(path + "?v=1.1"); if (!r.ok) throw new Error(path); return r.text(); }
 async function downloadRuntime() { try { download("pix.lua", await fetchText("lua/pix.lua")); } catch (e) { toast(e.message); } }
 async function downloadMain() { try { const s = sp(); let txt = await fetchText("lua/example_main.lua"); if (s) txt = txt.replace(/local SPRITE = "[^"]*"/, 'local SPRITE = "' + s.name + '"'); download("spriteforge_main.lua", txt); } catch (e) { toast(e.message); } }
 function pickFile(accept, cb) { const i = el("input", { type: "file", accept }); i.onchange = () => { for (const f of i.files) cb(f); }; i.click(); }
@@ -568,9 +571,10 @@ function drawGrid() {
   const z = S.zoom; drawCanvas.width = s.w * z; drawCanvas.height = s.h * z;
   const ctx = drawCtx; const cs = Math.max(4, Math.min(z, 16));
   for (let y = 0; y < s.h * z; y += cs) for (let x = 0; x < s.w * z; x += cs) { ctx.fillStyle = ((x + y) / cs) % 2 ? "#2a2c33" : "#22242a"; ctx.fillRect(x, y, cs, cs); }
-  const paint = (grid, alpha) => { for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) { const k = grid[y][x]; if (k == null) continue; const c = M.resolveColor(S.project, k, S.previewPal); ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${(c[3] ?? 255) / 255 * alpha})`; ctx.fillRect(x * z, y * z, z, z); } };
-  if (S.onion && S.frame > 0) paint(M.composite(s, S.frame - 1), 0.25);
-  paint(M.composite(s, S.frame), 1);
+  const names = s.layers.filter(L => L.visible).map(L => L.name);
+  if (S.onion && S.frame > 0) { ctx.globalAlpha = 0.25; drawScaled(ctx, rasterFrame(S.project, s, S.frame - 1, S.previewPal, names), 0, 0, s.w * z, s.h * z); ctx.globalAlpha = 1; }
+  drawScaled(ctx, rasterFrame(S.project, s, S.frame, S.previewPal, names), 0, 0, s.w * z, s.h * z);
+  bumpRaster();
   if (S.grid && z >= 6) { ctx.strokeStyle = "rgba(255,255,255,.07)"; ctx.lineWidth = 1; ctx.beginPath(); for (let x = 0; x <= s.w; x++) { ctx.moveTo(x * z + .5, 0); ctx.lineTo(x * z + .5, s.h * z); } for (let y = 0; y <= s.h; y++) { ctx.moveTo(0, y * z + .5); ctx.lineTo(s.w * z, y * z + .5); } ctx.stroke(); }
   if (S.mirror) { ctx.strokeStyle = "rgba(106,172,240,.8)"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(s.w * z / 2, 0); ctx.lineTo(s.w * z / 2, s.h * z); ctx.stroke(); ctx.setLineDash([]); }
   if (s.nine) { ctx.strokeStyle = "rgba(242,186,66,.6)"; ctx.setLineDash([3, 3]); ctx.beginPath(); const n = s.nine; for (const x of [n.l, s.w - n.r]) { ctx.moveTo(x * z, 0); ctx.lineTo(x * z, s.h * z); } for (const y of [n.t, s.h - n.b]) { ctx.moveTo(0, y * z); ctx.lineTo(s.w * z, y * z); } ctx.stroke(); ctx.setLineDash([]); }
@@ -756,18 +760,21 @@ function renderRight(rebuild = true) {
   if (!s) return;
   scheduleCost();
 }
-let costTimer = null;
+let costTimer = null, costWorker = null, costSeq = 0;
 function scheduleCost() {
   clearTimeout(costTimer);
   costTimer = setTimeout(() => {
     const s = sp(); if (!s) return;
     try {
-      const enc = encodeProject(S.project);
-      const mine = enc.entries.filter(e => e.name === s.name || e.name.startsWith(s.name + "#"));
-      S.cost = (mine[S.frame] || mine[0] || { count: 0 }).count; S.costTotal = enc.total;
-    } catch (e) { S.cost = null; }
-    updateStatus();
-  }, 120);
+      if (!costWorker) {
+        costWorker = new Worker("js/costworker.js?v=1.1", { type: "module" });
+        costWorker.onmessage = e => { if (e.data.id !== costSeq) return; if (e.data.error) S.cost = null; else { S.cost = e.data.cost; S.costTotal = e.data.total; } updateStatus(); };
+        costWorker.onerror = () => { costWorker = null; };
+      }
+      S.cost = null; updateStatus();
+      costWorker.postMessage({ id: ++costSeq, project: S.project, name: s.name, frame: S.frame });
+    } catch (err) { S.cost = null; updateStatus(); }
+  }, 350);
 }
 function coloursBody() {
   const out = [];
@@ -839,7 +846,7 @@ function tick(ts) {
     const W = previewCv.width, H = previewCv.height;
     previewCtx.fillStyle = "#15161a"; previewCtx.fillRect(0, 0, W, H);
     previewCtx.strokeStyle = "#2e3139"; previewCtx.beginPath(); previewCtx.moveTo(0, H - 30); previewCtx.lineTo(W, H - 30); previewCtx.stroke();
-    const px = s.kind === "vector" ? 140 / Math.max(s.w, s.h) : Math.max(2, Math.min(10, Math.floor(140 / Math.max(s.w, s.h))));
+    const fit = 140 / Math.max(s.w, s.h), px = s.kind === "vector" || fit < 2 ? Math.min(fit, 10) : Math.min(10, Math.floor(fit));
     drawActor(previewCtx, a, S.project, W / 2, H - 30, px, S.previewPal === "base" ? null : S.previewPal, force);
     if (S.evFlash) { S.evFlash.t -= dt; if (S.evFlash.t <= 0) S.evFlash = null; else { previewCtx.globalAlpha = Math.min(1, S.evFlash.t * 2); previewCtx.fillStyle = "#f2ba42"; previewCtx.font = "bold 13px Segoe UI, sans-serif"; previewCtx.fillText("event: " + S.evFlash.name, 8, 18); previewCtx.globalAlpha = 1; } }
   }
@@ -1222,7 +1229,8 @@ function buildGuide() {
     sec(t("What is SpriteForge?"),
       p(t("SpriteForge makes custom pixel art usable in games that cannot load image files. Each sprite is stored as a short list of coloured rectangles; a small runtime (pix.lua) draws those rectangles as plain UI image controls. The result looks like a normal sprite and can be moved, scaled, tinted and animated.")),
       p(t("It was built for Miliastra Wonderland (Genshin Impact UGC) Lua client scripts, where creators have no way to upload textures, but the format is engine-neutral: anything that can draw a coloured rectangle can draw a SpriteForge sprite.")),
-      el("div", { class: "row" }, btn(t("New sprite…"), () => openNewSprite(), { class: "primary" }), btn(t("Import image…"), openImport), btn(t("Add this example to my project"), addExampleToProject))),
+      el("div", { class: "row" }, btn(t("New sprite…"), () => openNewSprite(), { class: "primary" }), btn(t("Import image…"), openImport), btn(t("Add this example to my project"), addExampleToProject)),
+      el("p", { class: "help" }, t("SpriteForge is an unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by HoYoverse or COGNOSPHERE. Genshin Impact and Miliastra Wonderland are trademarks of their respective owners and are named here only to describe compatibility."))),
     sec(t("The screen"),
       p(t("Top: the menu (File, Edit, Sprite, View, Help) - every command is there with its shortcut. In the middle: the three steps Draw, Animate, Behave. Right: ? opens this guide, Export saves the Lua file.")),
       p(t("Under the menu: one tab per sprite. Left: the tools and your two colours - the left mouse button paints the primary colour, the right button the secondary one. Centre: the canvas; the mouse wheel zooms, Space+drag or the middle button moves the view. Bottom: the frames of the sprite.")),
@@ -1232,7 +1240,7 @@ function buildGuide() {
       p(t("The number next to each sprite is its cost in rectangles. Every rectangle is one UI control in the game, so fewer is faster. A clean 16×16 character costs 20-40; a photo quantised to 16 colours can cost 300+.")),
       h(t("Example")), p(t("New sprite… has ten ready-made sprites (heart, coin, sword, chest, button…). Pick one, change a few pixels, look at the cost in the status bar.")),
       el("div", { class: "row" }, btn(t("New sprite…"), () => openNewSprite(), { class: "primary" }))),
-    sec(t("Drawing mode (like Paint)"),
+    sec(t("Drawing mode"),
       p(t("Besides pixel art, a sprite can be a drawing: brush strokes, lines, circles and boxes. Choose Drawing in New sprite…. It is still a normal sprite: colours and variants, layers and parts, frames, clips and behaviours work exactly the same.")),
       p(t("In the game every stroke is rebuilt from rectangles and circles with the same positions, sizes and angles as in the editor, so it looks identical at any size. The cost is the number of these pieces: about two per corner of a stroke. Smoothing removes corners.")),
       h(t("Examples (live)")),
@@ -1421,11 +1429,12 @@ function showWelcome() {
     el("p", {}, t("Draw or import a small pixel sprite, give it colour variants, animate it, describe how it reacts - then export one Lua file your game draws with plain rectangles. Made for engines that cannot load images (such as Miliastra Wonderland), usable anywhere.")),
     el("div", { class: "startbtns" },
       btn([icon("plus", 22), el("b", {}, t("Pixel art")), el("span", { class: "help" }, t("Blank canvas or a ready-made example"))], go(() => openNewSprite("pixel")), { class: "bigbtn" }),
-      btn([icon("pencil", 22), el("b", {}, t("Drawing")), el("span", { class: "help" }, t("Free brush strokes, lines, circles and boxes, smooth at any size. Like Paint."))], go(() => openNewSprite("vector")), { class: "bigbtn" }),
+      btn([icon("pencil", 22), el("b", {}, t("Drawing")), el("span", { class: "help" }, t("Free brush strokes, lines, circles and boxes, smooth at any size."))], go(() => openNewSprite("vector")), { class: "bigbtn" }),
       btn([icon("copy", 22), el("b", {}, t("Import image…")), el("span", { class: "help" }, t("Turn a picture into pixel art"))], go(openImport), { class: "bigbtn" }),
       btn([icon("play", 22), el("b", {}, t("Load the sample project")), el("span", { class: "help" }, t("A finished sprite with animation and behaviour"))], go(loadSample), { class: "bigbtn" }),
       btn([icon("gear", 22), el("b", {}, t("Read the Guide")), el("span", { class: "help" }, t("What SpriteForge is and how to use it"))], go(() => setTab("guide")), { class: "bigbtn" })),
-    el("div", { class: "row" }, el("span", { class: "help" }, t("Language")), el("select", { onchange: e => { setLang(e.target.value); location.reload(); } }, ...LANGS.map(([c, n]) => el("option", { value: c, selected: c === lang }, n))), el("span", { class: "spacer" }), btn(t("Close"), closeDialog))));
+    el("div", { class: "row" }, el("span", { class: "help" }, t("Language")), el("select", { onchange: e => { setLang(e.target.value); location.reload(); } }, ...LANGS.map(([c, n]) => el("option", { value: c, selected: c === lang }, n))), el("span", { class: "spacer" }), btn(t("Close"), closeDialog)),
+    el("div", { class: "help" }, t("Unofficial fan-made tool, not affiliated with HoYoverse."), " ", el("a", { href: "#", onclick: e => { e.preventDefault(); openAbout(); } }, t("About SpriteForge")))));
   dlg.classList.add("on");
   try { localStorage.setItem("pixforge.welcomed", "1"); } catch (e) {}
 }
@@ -1450,7 +1459,7 @@ function startPanel() {
     el("h2", {}, t("Start a sprite")),
     el("div", { class: "startbtns" },
       btn([icon("plus", 22), el("b", {}, t("Pixel art")), el("span", { class: "help" }, t("Blank canvas or a ready-made example"))], () => openNewSprite("pixel"), { class: "bigbtn" }),
-      btn([icon("pencil", 22), el("b", {}, t("Drawing")), el("span", { class: "help" }, t("Free brush strokes, lines, circles and boxes, smooth at any size. Like Paint."))], () => openNewSprite("vector"), { class: "bigbtn" }),
+      btn([icon("pencil", 22), el("b", {}, t("Drawing")), el("span", { class: "help" }, t("Free brush strokes, lines, circles and boxes, smooth at any size."))], () => openNewSprite("vector"), { class: "bigbtn" }),
       btn([icon("copy", 22), el("b", {}, t("Import image…")), el("span", { class: "help" }, t("Turn a picture into pixel art"))], openImport, { class: "bigbtn" }),
       btn([icon("play", 22), el("b", {}, t("Load the sample project")), el("span", { class: "help" }, t("A finished sprite with animation and behaviour"))], loadSample, { class: "bigbtn" }),
       btn([icon("gear", 22), el("b", {}, t("Guide")), el("span", { class: "help" }, t("What SpriteForge is and how to use it"))], () => setTab("guide"), { class: "bigbtn" })));
@@ -1488,6 +1497,15 @@ function openExport() {
   dlg.append(box); dlg.classList.add("on");
 }
 
+function openAbout() {
+  const dlg = $("#dialog"); dlg.innerHTML = "";
+  dlg.append(el("div", { class: "box" }, el("h2", {}, "SpriteForge 1.1"),
+    el("p", {}, t("SpriteForge is an unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by HoYoverse or COGNOSPHERE. Genshin Impact and Miliastra Wonderland are trademarks of their respective owners and are named here only to describe compatibility.")),
+    el("p", {}, t("SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002). Everything you draw and export is your own work.")),
+    el("p", { class: "help" }, t("Open source under the MIT licence."), " ", el("a", { href: "https://github.com/khruq/SpriteForge", target: "_blank", rel: "noopener" }, "github.com/khruq/SpriteForge")),
+    el("div", { class: "row" }, el("span", { class: "spacer" }), btn(t("Close"), closeDialog))));
+  dlg.classList.add("on");
+}
 function openSettings() {
   const dlg = $("#dialog"); dlg.innerHTML = "";
   dlg.append(el("div", { class: "box" }, el("h2", {}, t("Settings")),
@@ -1528,7 +1546,7 @@ function openNewSprite(kind) {
   }
   const kinds = el("div", { class: "kinds" },
     btn([el("b", {}, t("Pixel art")), el("span", { class: "help" }, t("A grid of pixels. Crisp retro look, pencil and fill tools."))], () => openNewSprite("pixel"), { class: "kindbtn", on: !vec }),
-    btn([el("b", {}, t("Drawing")), el("span", { class: "help" }, t("Free brush strokes, lines, circles and boxes, smooth at any size. Like Paint."))], () => openNewSprite("vector"), { class: "kindbtn", on: vec }));
+    btn([el("b", {}, t("Drawing")), el("span", { class: "help" }, t("Free brush strokes, lines, circles and boxes, smooth at any size."))], () => openNewSprite("vector"), { class: "kindbtn", on: vec }));
   dlg.append(el("div", { class: "box" }, el("h2", {}, t("New sprite…")), kinds,
     el("h3", {}, t("Blank canvas")),
     el("div", { class: "row" }, el("span", { class: "help" }, t("name")), name, el("span", { class: "help" }, t("Size")), w, "×", h, sizes),
@@ -1570,7 +1588,9 @@ function renderAll() {
 function boot() {
   document.documentElement.lang = lang;
   registerCommands();
-  S.project = autoload();
+  const safe = /[?&]safe\b/.test(location.search);
+  S.project = safe ? null : autoload();
+  if (safe) setTimeout(() => toast(t("Started without the saved project. Open a project file or start a new one.")), 300);
   let fresh = false;
   if (!S.project) { S.project = sampleProject(); S.sprite = "potion"; S.key = "p2"; fresh = true; }
   if (S.key === null) S.key = Object.keys(S.project.palettes.base)[0] || null;

@@ -30,7 +30,7 @@ for _, size in ipairs({ { 300, 120 }, { 64, 56 }, { 500, 300 } }) do
   print(string.format("nine %dx%d -> extents %.1fx%.1f from (%.1f,%.1f) rects %d %s", W, H, b.x1 - b.x0, b.y1 - b.y0, b.x0, b.y0, b.n, ok and "OK" or "FAIL"))
   assert(ok)
 end
--- LOD: slime@2 is drawn at double px so it covers the same area as slime
+-- LOD: box@2 is drawn at double px so it covers the same area as box
 local a = Px.draw(root, "box", 0, 0, { px = 4 })
 local c = Px.draw(root, "box", 0, 0, { px = 4, lod = "half" })
 local ba = bounds(a, 0, 0, { x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, n = 0 })

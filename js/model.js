@@ -3,7 +3,7 @@
 // diffed, versioned in git and re-imported. Pixel grids are arrays of palette
 // keys (strings) or null. Palette keys are free names; keys starting with "p"
 // or "q" followed by a digit are "tint slots" that the runtime can swap per
-// instance (Px.spawn(..., { pal = "hydro" })).
+// instance (Px.spawn(..., { pal = "blue" })).
 
 export const FORMAT_VERSION = 1;
 export const MAX_SIZE = 256;
@@ -17,8 +17,8 @@ export function newProject(name = "my-game") {
         p0: [60, 100, 60, 255], p1: [90, 160, 80, 255], p2: [150, 220, 110, 255], p3: [200, 245, 170, 255],
         q0: [120, 60, 30, 255], q1: [170, 100, 50, 255], q2: [220, 160, 90, 255], q3: [245, 210, 150, 255],
       },
-      hydro: { p0: [30, 70, 140, 255], p1: [50, 120, 210, 255], p2: [100, 180, 250, 255], p3: [190, 230, 255, 255] },
-      pyro: { p0: [140, 40, 20, 255], p1: [220, 80, 40, 255], p2: [255, 140, 70, 255], p3: [255, 210, 150, 255] },
+      blue: { p0: [30, 70, 140, 255], p1: [50, 120, 210, 255], p2: [100, 180, 250, 255], p3: [190, 230, 255, 255] },
+      red: { p0: [140, 40, 20, 255], p1: [220, 80, 40, 255], p2: [255, 140, 70, 255], p3: [255, 210, 150, 255] },
     },
     sprites: {},
     clips: {},

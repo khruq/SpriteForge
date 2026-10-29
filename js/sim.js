@@ -1,4 +1,5 @@
-import { compileShapes, drawPrims } from "./vector.js?v=1.0";
+import { compileShapes, drawPrims } from "./vector.js?v=1.1";
+import { cachedFrame, drawScaled } from "./raster.js?v=1.1";
 // SpriteForge - runtime simulator. Mirrors lua/pix.lua: the same clip evaluation
 // and the same state machine, so what the browser preview shows is what the
 // Lua runtime does in Miliastra.
@@ -154,17 +155,7 @@ export function drawActor(ctx, actor, project, cx, cy, px, instancePal = null, f
     ctx.restore();
     return;
   }
-  for (const L of sp.layers) {
-    if (!actor.layerVisible(L.name) || !L.visible) continue;
-    const g = f.layers[L.name];
-    if (!g) continue;
-    for (let y = 0; y < sp.h; y++) for (let x = 0; x < sp.w; x++) {
-      const k = g[y][x];
-      if (k == null) continue;
-      const c = (project.palettes[pal] || {})[k] || project.palettes.base[k] || [255, 0, 255, 255];
-      ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${(c[3] ?? 255) / 255})`;
-      ctx.fillRect((x - sp.ax) * px, (y - sp.ay - 1) * px, px + 0.5, px + 0.5);
-    }
-  }
+  const names = sp.layers.filter(L => L.visible && actor.layerVisible(L.name)).map(L => L.name);
+  drawScaled(ctx, cachedFrame(project, sp, frame, pal, names), -sp.ax * px, -(sp.ay + 1) * px, sp.w * px, sp.h * px);
   ctx.restore();
 }
