@@ -157,8 +157,9 @@ local function newNode(ctrl, parent)
 end
 
 local function isNode(p)
-  local ok, kids = pcall(function() return type(p) == "table" and rawget(p, "kids") end)
-  return ok and kids ~= nil
+  if type(p) ~= "table" then return false end
+  local ok, kids = pcall(rawget, p, "kids")
+  return ok and type(kids) == "table"
 end
 
 function Px.group(parent, x, y)

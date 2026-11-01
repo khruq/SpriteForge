@@ -103,4 +103,10 @@ e:flip(true) assert(e.flipped == true, "flip") e:face(1) assert(e.flipped == fal
 for _, n in ipairs({ "inCubic", "inOutCubic", "inSine", "outSine", "inOutSine", "inBack", "outElastic" }) do
   local f = Px.EASE[n] assert(math.abs(f(0)) < 1e-9 and math.abs(f(1) - 1) < 1e-9, "ease " .. n)
 end
+local udRoot = io.stdout
+local ud = Px.spawn(udRoot, "potion", 0, 0, { px = 6 })
+assert(ud and ud.ctrl and ud.parent == nil, "spawn straight into a userdata container")
+local udDraw = Px.draw(udRoot, "potion", 0, 0)
+assert(udDraw and udDraw.sprite, "draw straight into a userdata container")
+ud:destroy() udDraw:destroy()
 print("pix.lua OK: nodes live", Px.count)

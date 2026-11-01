@@ -1,5 +1,5 @@
 // SpriteForge - counts rectangles in the background so drawing stays smooth on big sprites.
-import { encodeProject } from "./export.js?v=1.7";
+import { encodeProject } from "./export.js?v=1.8";
 onmessage = e => {
   const { id, project, name, frame } = e.data;
   try {

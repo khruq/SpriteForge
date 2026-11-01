@@ -18,14 +18,53 @@
 </head>
 <body>
 <h1>SpriteForge</h1>
-<p>Pixel sprites, colour variants, timeline clips and state-machine behaviours for games that cannot load image files. Every sprite becomes a small set of coloured rectangles drawn by one runtime file; the bundled runtime targets Lua client scripts, and the data format works with any engine that can draw a rectangle. The editor runs in 15 languages (auto-detected from the browser, switchable in the top bar). <a href="../index.html">Open the editor</a>.</p>
-<nav><a href="#why">Why</a><a href="#setup">Editor setup</a><a href="#workflow">Workflow</a><a href="#drawing">Drawing</a><a href="#examples">Examples</a><a href="#api">Lua API</a><a href="#more">More</a><a href="#format">Data format</a><a href="#budget">Rectangle budget</a><a href="#faq">FAQ</a><a href="#legal">Legal</a></nav>
+<p>Pixel sprites, colour variants, timeline clips and state-machine behaviours for games that cannot load image files. Every sprite becomes a small set of coloured rectangles drawn by one runtime file; the bundled runtime targets Lua client scripts, and the data format works with any engine that can draw a rectangle. The editor runs in 15 languages (auto-detected from the browser, switchable in the top bar). <a href="../index.html">Open the editor</a> · <a href="https://github.com/khruq/SpriteForge" target="_blank" rel="noopener">Source code on GitHub</a> (open source, MIT).</p>
+<nav><a href="#why">Why</a><a href="#setup">Editor setup</a><a href="#workflow">Workflow</a><a href="#drawing">Drawing</a><a href="#examples">Examples</a><a href="#api">Lua API</a><a href="#more">More</a><a href="#format">Data format</a><a href="#budget">Rectangle budget</a><a href="#faq">FAQ</a><a href="#legal">Legal</a><a href="https://github.com/khruq/SpriteForge" target="_blank" rel="noopener">GitHub</a></nav>
 
 <h2 id="why">Why this exists</h2>
 <p>Some game editors do not let creators upload images. Everything on screen is built from the built-in asset list. A plain square image, tinted and resized many times, is the only way to show something the platform has never seen - a mascot, a dish, a crop, a card frame. Doing that by hand is tedious and expensive: every rectangle is a UI control. SpriteForge turns pixel art into the fewest rectangles it can, keeps the result editable, and adds the things a sprite needs to live inside a game: recolourable palettes, layers, frame animation, procedural clips and a state machine the game drives with events.</p>
 
 <h2 id="setup">Editor setup (once per stage)</h2>
-<h3>What you need</h3>
+<p>The easiest way is one file, <code>spriteforge.lua</code>. It holds your sprites, the runtime that draws them and a start script, so you download and attach only this file. Programmers who want to control sprites from their own scripts can use separate files instead (see <a href="#setup-files">Separate files</a> below).</p>
+<h3>One file: what you need</h3>
+<table>
+<tr><th>What</th><th>Where it comes from</th><th>When to change it</th></tr>
+<tr><td><code>spriteforge.lua</code></td><td>Export → <b>Download spriteforge.lua</b>. Your sprites, the runtime and a start script in one file.</td><td>After every change in SpriteForge: download it again and replace the file.</td></tr>
+<tr><td>One Image template</td><td>Made once in the stage. Its Index goes into Export → <b>Image template Index</b>; the number is stored in your project and written into the file.</td><td>Never, unless you delete the template.</td></tr>
+</table>
+<h3>One file: where it goes</h3>
+<pre>&lt;stage folder&gt;\external_lua_file\
+    spriteforge.lua</pre>
+<h3>One file: step by step</h3>
+<ol>
+  <li>Open your stage in the editor and save it once, so its folder exists.</li>
+  <li><b>UI Control Group Library → Client Control Templates</b> → new template of type <b>Image</b>: name <code>T_PIXEL</code>, image <code>100001</code> (white square), size 10×10, pivot and anchor centred, Initially Visible on. Write down its <b>Control Template Index ID</b>.</li>
+  <li>In SpriteForge open <b>Export</b>, type that number into <b>Image template Index</b>, choose what to show when the game starts (sprite, size, X, Y) and press <b>Download spriteforge.lua</b>.</li>
+  <li>Find the folder: Client Script Resource Explorer → right-click → <b>New Client Script</b>. A file window opens in the <code>external_lua_file</code> folder of this stage; copy its path from the address bar. The empty script it made can be deleted.</li>
+  <li>Copy <code>spriteforge.lua</code> into that folder. If an older copy is there, replace it.</li>
+  <li>Client Script Resource Explorer → right-click → <b>Batch Add Script Files → Add by Folder</b>. Check that <code>spriteforge</code> now appears in the list. A file without a mapping never reaches the game.</li>
+  <li><b>Manage UI Control Groups → Interface Layout → Add UI Control → Client Control Container</b>, name it <code>PX_Root</code> and stretch it to full screen. (0, 0) is the centre of the screen.</li>
+  <li>On <code>PX_Root</code>: Script tab → Add Script → <code>spriteforge.lua</code>. No script variables are needed.</li>
+  <li>Ctrl+S, restart the Sandbox completely, Test Play. Logs → Client Scripts should show <code>SpriteForge: 1 sprite(s) ready</code>.</li>
+</ol>
+<p>Clickable sprites: make a <b>CursorEventArea</b> template (10×10, centred), type its index into Export → <b>Tap template Index</b> and download again. Sprites with a behaviour then receive the <code>tap</code> event.</p>
+<p>The top of <code>spriteforge.lua</code> holds the settings from Export, so small changes can also be made right there:</p>
+<pre>local TEMPLATE = 1073741900      -- Image template Index (nil = read the TPL_SPRITE script variable)
+local TAP_TEMPLATE = nil         -- CursorEventArea template Index, optional
+local SHOW = {
+  { sprite = "potion", x = 0, y = 0, size = 6 },
+}</pre>
+<table>
+<tr><th>What you see</th><th>Cause and fix</th></tr>
+<tr><td>The log says <code>nothing was drawn</code></td><td>The Image template Index in Export is missing or wrong, or the file is not attached to <code>PX_Root</code>.</td></tr>
+<tr><td><code>spriteforge</code> is not in the Client Script Resource Explorer list</td><td>The file is not in <code>external_lua_file</code>, or Add by Folder was not run. Repeat step 6.</td></tr>
+<tr><td>The old picture is still shown</td><td>Ctrl+S and restart the Sandbox completely; Test Play alone can keep old scripts.</td></tr>
+<tr><td>Wrong place or size</td><td>Change X, Y and Size in Export and download again (or edit <code>SHOW</code> at the top of the file).</td></tr>
+<tr><td>The game gets slow</td><td>Check the cost in Export; keep everything visible at once under about 1200-2000 rectangles.</td></tr>
+<tr><td>You used <code>pix.lua</code>, <code>pixdata.lua</code> and <code>spriteforge_main.lua</code> before</td><td>Either keep them or switch to <code>spriteforge.lua</code>, but do not attach both scripts to <code>PX_Root</code>.</td></tr>
+</table>
+<h3 id="setup-files">Separate files (for programmers)</h3>
+
 <table>
 <tr><th>File</th><th>What it is</th><th>When to replace it</th></tr>
 <tr><td><code>pixdata.lua</code></td><td>Your sprites, colours, clips and behaviours. Made by Export in the editor.</td><td>After every change in SpriteForge.</td></tr>
@@ -44,7 +83,7 @@
   <li>Find the folder: Client Script Resource Explorer → right-click → <b>New Client Script</b>. A file window opens in the <code>external_lua_file</code> folder of this stage; copy its path from the address bar. The empty script it made can be deleted.</li>
   <li>Copy the three files into that folder. If older copies are there, replace them.</li>
   <li>Client Script Resource Explorer → right-click → <b>Batch Add Script Files → Add by Folder</b>. Check that <code>pix</code>, <code>pixdata</code> and <code>spriteforge_main</code> now appear in the list. A file without a mapping never reaches the game.</li>
-  <li><b>Manage UI Control Groups → Interface Layout → Add UI Control → Client Control Container</b>, name it <code>PX_Root</code>, then Canvas Settings → Go to Edit. In code, (0, 0) is the centre of this container; the canvas is 1600×900.</li>
+  <li><b>Manage UI Control Groups → Interface Layout → Add UI Control → Client Control Container</b>, name it <code>PX_Root</code> and stretch it to full screen. In code, (0, 0) is the centre of the screen.</li>
   <li><b>UI Control Group Library → Client Control Templates</b> → new template of type <b>Image</b>: name <code>T_PIXEL</code>, image <code>100001</code> (white square), size 10×10, pivot and anchor centred, Initially Visible on. Write down its <b>Control Template Index ID</b>.</li>
   <li>On <code>PX_Root</code>: Script tab → Add Script → <code>spriteforge_main.lua</code>. Attach only this file; it loads <code>pix</code> and <code>pixdata</code> itself.</li>
   <li>Right-click <code>spriteforge_main.lua</code> → <b>Edit Script Variables</b> → add <code>TPL_SPRITE</code>, type <b>Client Control ID</b>, value = the index of <code>T_PIXEL</code>.</li>
@@ -84,21 +123,23 @@ end</pre>
 
 <h2 id="workflow">Workflow</h2>
 <ol>
-  <li><b>Draw or import.</b> Import a picture (downscaled, quantised to N colours, optional outline), a sprite sheet (cells become frames), ASCII rows with a legend, or a previously exported <code>pixdata.lua</code>. Or draw from scratch with pencil, fill, line, rectangle, mirror-X and layers.</li>
+  <li><b>Draw or import.</b> Import a picture as pixel art (downscaled, quantised to N colours, optional outline) or as a drawing (overlapping ellipses or rectangles), a sprite sheet (cells become frames), ASCII rows with a legend, or a previously exported <code>pixdata.lua</code>. Or draw from scratch with pencil, fill, line, rectangle, mirror-X and layers.</li>
   <li><b>Palette.</b> Keys named <code>p0…p3</code> and <code>q0…q3</code> are tint slots. Define override palettes (<code>blue</code>, <code>red</code>, <code>gold</code>…) that only replace those keys; one sprite then has as many variants as you have palettes, at no extra cost.</li>
   <li><b>Layers.</b> Mark a layer <b>S</b> (separate) to export it as its own sprite <code>name/layer</code>. The runtime can show and hide it per state (hat on, hat off) or you can draw it alone.</li>
   <li><b>Animate.</b> A clip is a timeline with tracks on <code>x y sx sy rot alpha frame pal layer:&lt;name&gt;</code>. Loop clips (idle, float) run forever; one-shot clips (squash, celebrate, fadeout) fire an <code>end</code> event. Presets give you idle/bounce/squash/shake/float/fadeout/frames in one click.</li>
   <li><b>Behave.</b> States choose a clip, a palette and layer visibility; transitions fire on game events (<code>tap</code>), on timers (random 3-6 s), when a clip ends, or when a parameter crosses a threshold (<code>energy &lt; 0.3</code>). The preview panel lets you fire events and drag parameters.</li>
-  <li><b>Export.</b> <code>pixdata.lua</code> contains everything (sprites, palettes, clips, behaviours). Save the <code>.spriteforge.json</code> project next to your Lua sources to keep editing later.</li>
+  <li><b>Export.</b> <code>spriteforge.lua</code> is one file with everything the game needs: sprites, palettes, clips, behaviours, the runtime and a start script. Programmers can take <code>pixdata.lua</code> and <code>pix.lua</code> separately instead. Save the <code>.spriteforge.json</code> project next to your Lua sources to keep editing later.</li>
 </ol>
 
 <h2 id="drawing">Drawing sprites (vector)</h2>
 <p>Besides pixel art, a sprite can be a <b>drawing</b>: brush strokes, lines, circles and boxes (New sprite… → Drawing). It works with everything else: palettes and variants, layers and parts, frames, clips, behaviours, tweens and particles.</p>
-<p>The editor stores shapes; for the game each shape is compiled into primitives that use two built-in assets: <code>100001</code> (square) and <code>100002</code> (circle). A stroke becomes one rotated rectangle per segment plus circles at its ends and corners; a filled rectangle is one square, a filled ellipse one stretched circle. The editor preview draws exactly these primitives, so the game shows the same picture. Translucent colours show slightly darker where pieces of one stroke overlap, in the editor and in the game alike.</p>
+<p>The editor stores shapes; for the game each shape is compiled into primitives that use two built-in assets: <code>100001</code> (square) and <code>100002</code> (circle). A stroke becomes one rotated rectangle per segment plus circles at its ends and corners; a filled rectangle is one square, a filled ellipse one stretched circle, both turned when the shape is turned. The editor preview draws exactly these primitives, so the game shows the same picture. Translucent colours show slightly darker where pieces of one stroke overlap, in the editor and in the game alike.</p>
 <pre>D.V["smile"] = { w = 64, h = 64, ax = 32, ay = 64, n = 13, k = { "out", "skin" },
   p = { 2, 32, 32, 52, 52, 0, 1,   -- asset (1 square, 2 circle), x, y, w, h, rotation, colour index
         2, 32, 32, 46, 46, 0, 2, ... } }</pre>
 <p>Units are drawing units with y going down, like the pixel grid; <code>px</code> (default <code>D.PX</code>) gives screen units per drawing unit. Rotation is clockwise on screen; the runtime converts it for the UI. Cost = number of primitives; the Smoothing slider of the brush lowers it.</p>
+<h3 id="drawing-import">From a picture</h3>
+<p>Import image… → <b>Drawing</b> turns a picture into overlapping filled ellipses or rectangles, each with its own position, size, angle and one of N colours. Every step tries many random shapes, improves the best ones by small changes and keeps the shape that brings the drawing closest to the picture. Transparent parts of the picture stay empty. Each shape is one primitive, so the number of shapes is the cost: 80-150 are enough for an icon, 300 or more come close to a detailed picture. The result is a normal drawing sprite 64 units wide that you can recolour, edit, animate and export.</p>
 
 <h2 id="examples">Examples</h2>
 <p>Every example uses the sample <b>potion</b> sprite. In the editor, Guide → "Add this example to my project" adds it with all its colours, clips and behaviour, and the Guide shows each example running live.</p>
@@ -265,6 +306,6 @@ Px.burst(root, "coin", 0, 0, { count = 8 })</pre>
 <h2 id="legal">Legal</h2>
 <p>SpriteForge is an independent, unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by any game developer or publisher. All trademarks belong to their respective owners.</p>
 <p>SpriteForge contains no game files, art or code. It refers to the built-in shapes of game editors only by their index numbers (100001, 100002). The sample sprites and presets were made for SpriteForge.</p>
-<p>Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided "as is", without warranty of any kind, under the MIT licence, © 2026 khruq.</p>
+<p>Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided "as is", without warranty of any kind, under the MIT licence, © 2026 khruq. Source code, issues and suggestions: <a href="https://github.com/khruq/SpriteForge" target="_blank" rel="noopener">github.com/khruq/SpriteForge</a>.</p>
 </body>
 </html>

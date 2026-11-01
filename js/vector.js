@@ -7,8 +7,9 @@
 //
 // Shapes:
 //   { t: "s", c, w, p: [x0, y0, x1, y1, ...] }  stroke with round ends and joints
-//   { t: "r", c, x, y, w, h }                     filled rectangle (top-left corner, size)
-//   { t: "e", c, x, y, w, h }                     filled ellipse (bounding box)
+//   { t: "r", c, x, y, w, h, r }                  filled rectangle (top-left corner, size, optional rotation)
+//   { t: "e", c, x, y, w, h, r }                  filled ellipse (bounding box, optional rotation)
+// r turns the shape around its centre, in degrees clockwise on screen.
 
 const R2 = v => Math.round(v * 10) / 10;
 
@@ -45,8 +46,7 @@ export function simplifyPoints(p, tol) {
 }
 
 export function compileShape(s, out = []) {
-  if (s.t === "r") { out.push({ a: 1, x: R2(s.x + s.w / 2), y: R2(s.y + s.h / 2), w: R2(Math.abs(s.w)), h: R2(Math.abs(s.h)), r: 0, c: s.c }); return out; }
-  if (s.t === "e") { out.push({ a: 2, x: R2(s.x + s.w / 2), y: R2(s.y + s.h / 2), w: R2(Math.abs(s.w)), h: R2(Math.abs(s.h)), r: 0, c: s.c }); return out; }
+  if (s.t === "r" || s.t === "e") { out.push({ a: s.t === "r" ? 1 : 2, x: R2(s.x + s.w / 2), y: R2(s.y + s.h / 2), w: R2(Math.abs(s.w)), h: R2(Math.abs(s.h)), r: R2(s.r || 0), c: s.c }); return out; }
   if (s.t !== "s") return out;
   const p = s.p, n = p.length / 2, w = s.w;
   if (n === 0) return out;
@@ -118,6 +118,7 @@ export function mapShape(s, fx, fy) {
   if (s.t === "s") { for (let i = 0; i < s.p.length; i += 2) { s.p[i] = R2(fx(s.p[i])); s.p[i + 1] = R2(fy(s.p[i + 1])); } return s; }
   const xa = fx(s.x), xb = fx(s.x + s.w), ya = fy(s.y), yb = fy(s.y + s.h);
   s.x = R2(Math.min(xa, xb)); s.w = R2(Math.abs(xb - xa)); s.y = R2(Math.min(ya, yb)); s.h = R2(Math.abs(yb - ya));
+  if (s.r && (xb < xa) !== (yb < ya)) s.r = -s.r;
   return s;
 }
 export function moveShape(s, dx, dy) { return mapShape(s, x => x + dx, y => y + dy); }

@@ -286,3 +286,9 @@ body.guidemode .right { display: none; }
 .track > div:first-child { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 select.ease { max-width: 150px; }
 .toolbar { overflow-x: hidden; } .colors { margin-right: 4px; }
+.ghbtn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; color: var(--dim); margin-right: 6px; text-decoration: none; }
+.ghbtn:hover { color: var(--ink); background: rgba(255,255,255,.08); }
+.showlist { display: flex; flex-direction: column; gap: 4px; }
+.showlist select { min-width: 140px; }
+details.adv { margin-top: 6px; }
+details.adv details { margin-top: 8px; }
