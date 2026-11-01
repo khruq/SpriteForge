@@ -1,15 +1,15 @@
-import * as M from "./model.js?v=1.0";
-import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.0";
-import { toLua, toJSON, toBundle, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.0";
-import { decodeRects, rasterize } from "./mesh.js?v=1.0";
-import { Actor, drawActor, EASE } from "./sim.js?v=1.0";
-import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.0";
-import { t, lang, setLang, LANGS } from "./i18n.js?v=1.0";
-import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.0";
-import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.0";
-import { rasterFrame, drawScaled, bumpRaster } from "./raster.js?v=1.0";
-import { SOFT } from "./shapes.js?v=1.0";
-import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.0";
+import * as M from "./model.js?v=1.1";
+import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.1";
+import { toLua, toJSON, toBundle, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.1";
+import { decodeRects, rasterize } from "./mesh.js?v=1.1";
+import { Actor, drawActor, EASE } from "./sim.js?v=1.1";
+import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.1";
+import { t, lang, setLang, LANGS } from "./i18n.js?v=1.1";
+import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.1";
+import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.1";
+import { rasterFrame, drawScaled, bumpRaster } from "./raster.js?v=1.1";
+import { SOFT } from "./shapes.js?v=1.1";
+import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.1";
 
 const $ = s => document.querySelector(s);
 const el = (tag, attrs = {}, ...kids) => {
@@ -383,7 +383,7 @@ async function exportBundle(names) {
   if (!es.show.some(x => proj.sprites[x.sprite])) { toast(t("Choose at least one sprite to show when the game starts")); return; }
   try { download("spriteforge.lua", toBundle(proj, es, await fetchText("lua/pix.lua"))); toast(t("spriteforge.lua exported")); } catch (e) { toast(e.message); }
 }
-async function fetchText(path) { const r = await fetch(path + "?v=1.0"); if (!r.ok) throw new Error(path); return r.text(); }
+async function fetchText(path) { const r = await fetch(path + "?v=1.1"); if (!r.ok) throw new Error(path); return r.text(); }
 async function downloadRuntime() { try { download("pix.lua", await fetchText("lua/pix.lua")); } catch (e) { toast(e.message); } }
 async function downloadMain() { try { const s = sp(); let txt = await fetchText("lua/example_main.lua"); if (s) txt = txt.replace(/local SPRITE = "[^"]*"/, 'local SPRITE = "' + s.name + '"'); download("spriteforge_main.lua", txt); } catch (e) { toast(e.message); } }
 function pickFile(accept, cb) { const i = el("input", { type: "file", accept }); i.onchange = () => { for (const f of i.files) cb(f); }; i.click(); }
@@ -813,7 +813,7 @@ function scheduleCost() {
     const s = sp(); if (!s) return;
     try {
       if (!costWorker) {
-        costWorker = new Worker("js/costworker.js?v=1.0", { type: "module" });
+        costWorker = new Worker("js/costworker.js?v=1.1", { type: "module" });
         costWorker.onmessage = e => { if (e.data.id !== costSeq) return; if (e.data.error) S.cost = null; else { S.cost = e.data.cost; S.costTotal = e.data.total; } updateStatus(); };
         costWorker.onerror = () => { costWorker = null; };
       }
@@ -1487,8 +1487,8 @@ function openImport(mode) {
   const outl = el("input", { type: "checkbox" }), desp = el("input", { type: "checkbox", checked: true }), dith = el("input", { type: "checkbox" }), slots = el("input", { type: "checkbox" });
   const name = el("input", { type: "text", value: uniqueName("import") });
   const sheet = el("input", { type: "checkbox" }), cols = el("input", { type: "number", min: 1, value: 4, style: "width:50px" }), rows = el("input", { type: "number", min: 1, value: 1, style: "width:50px" });
-  const vo = S.vecImport || (S.vecImport = { count: 120, colors: 24, kinds: "et", soft: true });
-  const vcount = el("input", { type: "number", min: 10, max: 500, value: vo.count }), vcolors = el("input", { type: "number", min: 2, max: 64, value: vo.colors }), vthr = el("input", { type: "range", min: 1, max: 255, value: 128 });
+  const vo = S.vecImport || (S.vecImport = { count: 120, colors: 64, kinds: "et", soft: false });
+  const vcount = el("input", { type: "number", min: 10, max: 500, value: vo.count }), vcolors = el("input", { type: "number", min: 2, max: 128, value: vo.colors }), vthr = el("input", { type: "range", min: 1, max: 255, value: 128 });
   const vkind = el("select", {}, el("option", { value: "et" }, t("Triangles and ellipses")), el("option", { value: "t" }, t("Triangles")), el("option", { value: "e" }, t("Ellipses")), el("option", { value: "r" }, t("Rectangles")), el("option", { value: "er" }, t("Ellipses and rectangles")), el("option", { value: "ert" }, t("All shapes")));
   vkind.value = vo.kinds;
   const vsoft = el("input", { type: "checkbox", checked: vo.soft });
@@ -1517,13 +1517,13 @@ function openImport(mode) {
   };
   const runFit = () => {
     stopFit(); vres = null; addBtn.disabled = true;
-    const iw = img.naturalWidth, ih = img.naturalHeight, k = 128 / Math.max(iw, ih);
-    const ww = Math.max(4, Math.round(iw * k)), wh = Math.max(4, Math.round(ih * k));
+    const iw = img.naturalWidth, ih = img.naturalHeight, u = 64 / Math.max(iw, ih);
+    const ww = 4 * Math.max(1, Math.round(iw * u)), wh = 4 * Math.max(1, Math.round(ih * u));
     const cv = el("canvas", { width: ww, height: wh }), ctx = cv.getContext("2d", { willReadFrequently: true });
     ctx.imageSmoothingEnabled = iw > ww; ctx.imageSmoothingQuality = "high"; ctx.drawImage(img, 0, 0, ww, wh);
-    const data = ctx.getImageData(0, 0, ww, wh).data, count = num(vcount, 10, 500, 120), colors = num(vcolors, 2, 64, 24);
+    const data = ctx.getImageData(0, 0, ww, wh).data, count = num(vcount, 10, 500, 120), colors = num(vcolors, 2, 128, 64);
     Object.assign(vo, { count, colors, kinds: vkind.value, soft: vsoft.checked });
-    const job = worker = new Worker("js/shapeworker.js?v=1.0", { type: "module" });
+    const job = worker = new Worker("js/shapeworker.js?v=1.1", { type: "module" });
     job.onmessage = e => {
       if (job !== worker) return;
       if (!dlg.classList.contains("on") || !prev.isConnected) { stopFit(); return; }
@@ -1751,7 +1751,7 @@ function openExport() {
 
 function openAbout() {
   const dlg = $("#dialog"); dlg.innerHTML = "";
-  dlg.append(el("div", { class: "box" }, el("h2", {}, "SpriteForge 1.0"),
+  dlg.append(el("div", { class: "box" }, el("h2", {}, "SpriteForge 1.1"),
     el("p", {}, t("SpriteForge is an independent, unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by any game developer or publisher. All trademarks belong to their respective owners.")),
     el("p", {}, t("SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002, 100003). Everything you draw and export is your own work.")),
     el("p", {}, t("Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided as is, without warranty of any kind.")),
