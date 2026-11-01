@@ -626,5 +626,14 @@
  "(0, 0), kapsayıcının merkezidir. Boyut, bir pikselin veya bir çizim biriminin kaç ekran birimi kapladığıdır.",
  "spriteforge.lua indir",
  "Ayrı dosyalar (programcılar için)",
- "Sprite'ları kendi betiklerinden kontrol ediyorsan bunları kullan. Aynı bölümde bunları spriteforge.lua ile karıştırma."
+ "Sprite'ları kendi betiklerinden kontrol ediyorsan bunları kullan. Aynı bölümde bunları spriteforge.lua ile karıştırma.",
+ "Görsel içe aktar… → Çizim, resmi üst üste binen üçgen, elips veya dikdörtgenlere dönüştürür. Her şekil oyunda bir dikdörtgendir: bir simge için 80-150 yeterlidir, 300 ve üzeri ayrıntılı bir resme yaklaşır. Yumuşak karıştırma bazı şekilleri yarı saydam yapar, böylece aynı maliyetle renkler daha yumuşak olur. Saydam kısımlar boş kalır.",
+ "Üçgenler ve elipsler",
+ "Üçgenler",
+ "Tüm şekiller",
+ "daha fazla şekil işe yaramaz",
+ "Üst üste binen üçgen, elips veya dikdörtgenler, her boyutta pürüzsüz.",
+ "Bazı şekiller yarı saydam olur ve alttaki şekillerle karışır: aynı dikdörtgen sayısıyla daha yumuşak renkler.",
+ "yumuşak karıştırma",
+ "SpriteForge hiçbir oyun dosyası, görseli veya kodu içermez. Düzenleyicinin yerleşik şekillerine yalnızca dizin numaralarıyla (100001, 100002, 100003) atıfta bulunur. Çizdiğiniz ve dışa aktardığınız her şey size aittir."
 ]

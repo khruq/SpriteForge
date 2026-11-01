@@ -1,14 +1,15 @@
-import * as M from "./model.js?v=1.8";
-import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.8";
-import { toLua, toJSON, toBundle, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.8";
-import { decodeRects, rasterize } from "./mesh.js?v=1.8";
-import { Actor, drawActor, EASE } from "./sim.js?v=1.8";
-import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.8";
-import { t, lang, setLang, LANGS } from "./i18n.js?v=1.8";
-import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.8";
-import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.8";
-import { rasterFrame, drawScaled, bumpRaster } from "./raster.js?v=1.8";
-import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.8";
+import * as M from "./model.js?v=1.0";
+import { imageToGrid, cutSheet, asciiToGrid, outline, despeckle, simplify, TILE_NAMES } from "./quantize.js?v=1.0";
+import { toLua, toJSON, toBundle, download, encodeProject, spriteCost, spriteToCanvas, fromLua } from "./export.js?v=1.0";
+import { decodeRects, rasterize } from "./mesh.js?v=1.0";
+import { Actor, drawActor, EASE } from "./sim.js?v=1.0";
+import { createPicker, fromHex, PRESET_PALETTES } from "./picker.js?v=1.0";
+import { t, lang, setLang, LANGS } from "./i18n.js?v=1.0";
+import { PRESETS, PRESET_COLORS, presetGrid } from "./presets.js?v=1.0";
+import { CLIP_LIBRARY, CLIP_CATEGORIES, makeClip } from "./clips.js?v=1.0";
+import { rasterFrame, drawScaled, bumpRaster } from "./raster.js?v=1.0";
+import { SOFT } from "./shapes.js?v=1.0";
+import { newVectorSprite, isVector, compileFrame, compileShapes, drawPrims, hitShape, shapeBounds, mapShape, moveShape, scaleShape, simplifyPoints, rectStroke, ellipseStroke, VECTOR_PRESETS, VECTOR_PRESET_COLORS } from "./vector.js?v=1.0";
 
 const $ = s => document.querySelector(s);
 const el = (tag, attrs = {}, ...kids) => {
@@ -382,7 +383,7 @@ async function exportBundle(names) {
   if (!es.show.some(x => proj.sprites[x.sprite])) { toast(t("Choose at least one sprite to show when the game starts")); return; }
   try { download("spriteforge.lua", toBundle(proj, es, await fetchText("lua/pix.lua"))); toast(t("spriteforge.lua exported")); } catch (e) { toast(e.message); }
 }
-async function fetchText(path) { const r = await fetch(path + "?v=1.8"); if (!r.ok) throw new Error(path); return r.text(); }
+async function fetchText(path) { const r = await fetch(path + "?v=1.0"); if (!r.ok) throw new Error(path); return r.text(); }
 async function downloadRuntime() { try { download("pix.lua", await fetchText("lua/pix.lua")); } catch (e) { toast(e.message); } }
 async function downloadMain() { try { const s = sp(); let txt = await fetchText("lua/example_main.lua"); if (s) txt = txt.replace(/local SPRITE = "[^"]*"/, 'local SPRITE = "' + s.name + '"'); download("spriteforge_main.lua", txt); } catch (e) { toast(e.message); } }
 function pickFile(accept, cb) { const i = el("input", { type: "file", accept }); i.onchange = () => { for (const f of i.files) cb(f); }; i.click(); }
@@ -812,7 +813,7 @@ function scheduleCost() {
     const s = sp(); if (!s) return;
     try {
       if (!costWorker) {
-        costWorker = new Worker("js/costworker.js?v=1.8", { type: "module" });
+        costWorker = new Worker("js/costworker.js?v=1.0", { type: "module" });
         costWorker.onmessage = e => { if (e.data.id !== costSeq) return; if (e.data.error) S.cost = null; else { S.cost = e.data.cost; S.costTotal = e.data.total; } updateStatus(); };
         costWorker.onerror = () => { costWorker = null; };
       }
@@ -1295,7 +1296,7 @@ function buildGuide() {
       h(t("Examples (live)")),
       el("div", { class: "demos" }, ...[["smile", "wobble"], ["cloud", "float"], ["heart", "heartbeat"], ["flower", "sway"]].map(([n, c]) => demoCard(demo({ project: vecDemoProject(), sprite: n, clip: n + "." + c, px: 1.6 }), n, c + " · " + compileFrame(vecDemoProject().sprites[n], 0).length + " " + t("rectangles"), 'a:play("' + c + '")'))),
       h(t("From a picture")),
-      p(t("Import image… → Drawing turns a picture into overlapping ellipses or rectangles. Every shape is one rectangle in the game: 80-150 are enough for an icon, 300 or more come close to a detailed picture. Transparent parts stay empty.")),
+      p(t("Import image… → Drawing turns a picture into overlapping triangles, ellipses or rectangles. Every shape is one rectangle in the game: 80-150 are enough for an icon, 300 or more come close to a detailed picture. Soft blending lets some shapes be half transparent, which gives smoother colours for the same cost. Transparent parts stay empty.")),
       el("div", { class: "row" }, btn(t("Import image…"), () => openImport("shapes"))),
       h(t("How to draw")),
       el("ol", { class: "steps" },
@@ -1486,8 +1487,11 @@ function openImport(mode) {
   const outl = el("input", { type: "checkbox" }), desp = el("input", { type: "checkbox", checked: true }), dith = el("input", { type: "checkbox" }), slots = el("input", { type: "checkbox" });
   const name = el("input", { type: "text", value: uniqueName("import") });
   const sheet = el("input", { type: "checkbox" }), cols = el("input", { type: "number", min: 1, value: 4, style: "width:50px" }), rows = el("input", { type: "number", min: 1, value: 1, style: "width:50px" });
-  const vcount = el("input", { type: "number", min: 10, max: 500, value: 120 }), vcolors = el("input", { type: "number", min: 2, max: 32, value: 16 }), vthr = el("input", { type: "range", min: 1, max: 255, value: 128 });
-  const vkind = el("select", {}, el("option", { value: "e" }, t("Ellipses")), el("option", { value: "r" }, t("Rectangles")), el("option", { value: "er" }, t("Ellipses and rectangles")));
+  const vo = S.vecImport || (S.vecImport = { count: 120, colors: 24, kinds: "et", soft: true });
+  const vcount = el("input", { type: "number", min: 10, max: 500, value: vo.count }), vcolors = el("input", { type: "number", min: 2, max: 64, value: vo.colors }), vthr = el("input", { type: "range", min: 1, max: 255, value: 128 });
+  const vkind = el("select", {}, el("option", { value: "et" }, t("Triangles and ellipses")), el("option", { value: "t" }, t("Triangles")), el("option", { value: "e" }, t("Ellipses")), el("option", { value: "r" }, t("Rectangles")), el("option", { value: "er" }, t("Ellipses and rectangles")), el("option", { value: "ert" }, t("All shapes")));
+  vkind.value = vo.kinds;
+  const vsoft = el("input", { type: "checkbox", checked: vo.soft });
   let result = null, costT = null, worker = null, vres = null, fitT = null;
   const W = () => Math.max(1, Math.min(M.MAX_SIZE, Math.round(+w.value) || 24)), H = () => Math.max(1, Math.min(M.MAX_SIZE, Math.round(+h.value) || 24));
   const keepRatio = el("input", { type: "checkbox", checked: true });
@@ -1503,8 +1507,11 @@ function openImport(mode) {
     const sc = 160 / Math.max(ww, wh), ox = (160 - ww * sc) / 2, oy = (160 - wh * sc) / 2;
     for (const q of shapes) {
       const c = pal[q.c]; if (!c) continue;
-      ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`; ctx.save(); ctx.translate(ox + q.x * sc, oy + q.y * sc); ctx.rotate(q.r * Math.PI / 180);
-      if (q.t === "e") { ctx.beginPath(); ctx.ellipse(0, 0, Math.max(0.01, q.a * sc), Math.max(0.01, q.b * sc), 0, 0, Math.PI * 2); ctx.fill(); } else ctx.fillRect(-q.a * sc, -q.b * sc, q.a * 2 * sc, q.b * 2 * sc);
+      const al = q.o === 0 ? SOFT / 255 : (c[3] ?? 255) / 255, a = q.a * sc, b = q.b * sc;
+      ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${al})`; ctx.save(); ctx.translate(ox + q.x * sc, oy + q.y * sc); ctx.rotate(q.r * Math.PI / 180);
+      if (q.t === "e") { ctx.beginPath(); ctx.ellipse(0, 0, Math.max(0.01, a), Math.max(0.01, b), 0, 0, Math.PI * 2); ctx.fill(); }
+      else if (q.t === "t") { ctx.beginPath(); ctx.moveTo(0, -b); ctx.lineTo(a, b); ctx.lineTo(-a, b); ctx.closePath(); ctx.fill(); }
+      else ctx.fillRect(-a, -b, a * 2, b * 2);
       ctx.restore();
     }
   };
@@ -1514,8 +1521,9 @@ function openImport(mode) {
     const ww = Math.max(4, Math.round(iw * k)), wh = Math.max(4, Math.round(ih * k));
     const cv = el("canvas", { width: ww, height: wh }), ctx = cv.getContext("2d", { willReadFrequently: true });
     ctx.imageSmoothingEnabled = iw > ww; ctx.imageSmoothingQuality = "high"; ctx.drawImage(img, 0, 0, ww, wh);
-    const data = ctx.getImageData(0, 0, ww, wh).data, count = num(vcount, 10, 500, 120);
-    const job = worker = new Worker("js/shapeworker.js?v=1.8", { type: "module" });
+    const data = ctx.getImageData(0, 0, ww, wh).data, count = num(vcount, 10, 500, 120), colors = num(vcolors, 2, 64, 24);
+    Object.assign(vo, { count, colors, kinds: vkind.value, soft: vsoft.checked });
+    const job = worker = new Worker("js/shapeworker.js?v=1.0", { type: "module" });
     job.onmessage = e => {
       if (job !== worker) return;
       if (!dlg.classList.contains("on") || !prev.isConnected) { stopFit(); return; }
@@ -1524,9 +1532,9 @@ function openImport(mode) {
       drawShapes(m.shapes, m.palette, ww, wh);
       if (!m.final) { costLabel.textContent = t("Working… {n} of {total}", { n: m.done, total: count }); return; }
       stopFit(); vres = { shapes: m.shapes, palette: m.palette, w: ww, h: wh };
-      costLabel.textContent = m.shapes.length + " " + t("rectangles"); addBtn.disabled = false;
+      costLabel.textContent = m.shapes.length + " " + t("rectangles") + (m.placed < count ? " · " + t("more shapes would not help") : ""); addBtn.disabled = false;
     };
-    job.postMessage({ data, w: ww, h: wh, opts: { count, colors: num(vcolors, 2, 32, 16), kinds: vkind.value, thr: +vthr.value, seed: 7 } }, [data.buffer]);
+    job.postMessage({ data, w: ww, h: wh, opts: { count, colors, kinds: vkind.value, soft: vsoft.checked, thr: +vthr.value, seed: 7 } }, [data.buffer]);
     costLabel.textContent = t("Working… {n} of {total}", { n: 0, total: count });
   };
   const refresh = () => {
@@ -1544,7 +1552,7 @@ function openImport(mode) {
     costT = setTimeout(() => { try { costLabel.textContent = spriteCost(proj, tmp) + " " + t("rectangles"); } catch (e) { costLabel.textContent = e.message; } }, 250);
   };
   for (const i of [colors, thr, outl, desp, dith, slots, sheet, cols, rows]) i.addEventListener("input", refresh);
-  for (const i of [vcount, vcolors, vthr, vkind]) i.addEventListener("change", refresh);
+  for (const i of [vcount, vcolors, vthr, vkind, vsoft]) i.addEventListener("change", refresh);
   const spriteName = () => { const v = latinName(name.value.trim()).replace(/[^\w-]/g, ""); return uniqueName(NAME_RE.test(v) ? v : "import"); };
   const addPixels = () => {
     if (!result) { toast(t("Choose an image first")); return; }
@@ -1571,13 +1579,13 @@ function openImport(mode) {
   };
   const addBtn = btn(t("Add sprite"), () => mode === "shapes" ? addShapes() : addPixels(), { class: "primary" });
   const kPix = btn([el("b", {}, t("Pixel art")), el("span", { class: "help" }, t("A small grid in a few colours, crisp retro look."))], () => setMode("pixels"), { class: "kindbtn", on: mode === "pixels" });
-  const kVec = btn([el("b", {}, t("Drawing")), el("span", { class: "help" }, t("Overlapping ellipses or rectangles, smooth at any size."))], () => setMode("shapes"), { class: "kindbtn", on: mode === "shapes" });
+  const kVec = btn([el("b", {}, t("Drawing")), el("span", { class: "help" }, t("Overlapping triangles, ellipses or rectangles, smooth at any size."))], () => setMode("shapes"), { class: "kindbtn", on: mode === "shapes" });
   const pixRows = [
     el("div", { class: "row" }, t("Grid"), w, "×", h, el("label", { class: "chk" }, keepRatio, t("keep proportions")), t("Colours"), colors, t("Transparency threshold"), thr),
     el("div", { class: "row" }, el("label", { class: "chk" }, outl, t("outline")), el("label", { class: "chk" }, desp, t("despeckle")), el("label", { class: "chk" }, dith, t("dither")), el("label", { class: "chk", title: t("Name the colours p0…pN so variants can recolour them") }, slots, t("use tint slots"))),
     el("div", { class: "row" }, el("label", { class: "chk" }, sheet, t("sprite sheet")), t("cols"), cols, t("rows"), rows, el("span", { class: "help" }, t("every cell becomes a frame")))];
   const vecRows = [
-    el("div", { class: "row" }, t("Shapes"), vcount, t("Colours"), vcolors, vkind, t("Transparency threshold"), vthr),
+    el("div", { class: "row" }, t("Shapes"), vcount, t("Colours"), vcolors, vkind, el("label", { class: "chk", title: t("Some shapes become half transparent and blend with the shapes below: smoother colours for the same number of rectangles.") }, vsoft, t("soft blending")), t("Transparency threshold"), vthr),
     el("div", { class: "help" }, t("Each shape becomes one rectangle in the game. More shapes look closer to the picture but cost more."))];
   function setMode(m) {
     mode = S.importMode = m;
@@ -1743,9 +1751,9 @@ function openExport() {
 
 function openAbout() {
   const dlg = $("#dialog"); dlg.innerHTML = "";
-  dlg.append(el("div", { class: "box" }, el("h2", {}, "SpriteForge 1.8"),
+  dlg.append(el("div", { class: "box" }, el("h2", {}, "SpriteForge 1.0"),
     el("p", {}, t("SpriteForge is an independent, unofficial, fan-made tool. It is not affiliated with, endorsed, sponsored or approved by any game developer or publisher. All trademarks belong to their respective owners.")),
-    el("p", {}, t("SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002). Everything you draw and export is your own work.")),
+    el("p", {}, t("SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002, 100003). Everything you draw and export is your own work.")),
     el("p", {}, t("Users are solely responsible for the content they create, import and export with SpriteForge, including having the rights to any images they import. The developer is not responsible for user-created content or for how it is used. SpriteForge is provided as is, without warranty of any kind.")),
     el("p", { class: "help" }, "© 2026 khruq · ", t("Open source under the MIT licence."), " ", el("a", { href: "https://github.com/khruq/SpriteForge", target: "_blank", rel: "noopener" }, "github.com/khruq/SpriteForge")),
     el("div", { class: "row" }, el("span", { class: "spacer" }), btn(t("Close"), closeDialog))));

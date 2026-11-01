@@ -626,5 +626,14 @@
  "(0, 0) é o centro do contêiner. Tamanho indica quantas unidades de tela um pixel ou uma unidade de desenho ocupa.",
  "Baixar spriteforge.lua",
  "Arquivos separados (para programadores)",
- "Use estes arquivos quando controlar os sprites pelos seus próprios scripts. Não os misture com spriteforge.lua na mesma fase."
+ "Use estes arquivos quando controlar os sprites pelos seus próprios scripts. Não os misture com spriteforge.lua na mesma fase.",
+ "Importar imagem… → Desenho transforma uma imagem em triângulos, elipses ou retângulos sobrepostos. Cada forma é um retângulo no jogo: 80-150 bastam para um ícone, 300 ou mais chegam perto de uma imagem detalhada. A mistura suave deixa algumas formas semitransparentes, o que dá cores mais suaves pelo mesmo custo. As partes transparentes ficam vazias.",
+ "Triângulos e elipses",
+ "Triângulos",
+ "Todas as formas",
+ "mais formas não ajudariam",
+ "Triângulos, elipses ou retângulos sobrepostos, suaves em qualquer tamanho.",
+ "Algumas formas ficam semitransparentes e se misturam com as de baixo: cores mais suaves com o mesmo número de retângulos.",
+ "mistura suave",
+ "O SpriteForge não contém arquivos, arte ou código do jogo. Ele se refere às formas integradas do editor apenas pelos seus números de índice (100001, 100002, 100003). Tudo o que você desenha e exporta é obra sua."
 ]

@@ -626,5 +626,14 @@
  "(0, 0) è il centro del contenitore. Dimensione indica quante unità di schermo occupa un pixel o un'unità di disegno.",
  "Scarica spriteforge.lua",
  "File separati (per i programmatori)",
- "Usali quando controlli gli sprite dai tuoi script. Non mescolarli con spriteforge.lua nello stesso livello."
+ "Usali quando controlli gli sprite dai tuoi script. Non mescolarli con spriteforge.lua nello stesso livello.",
+ "Importa immagine… → Disegno trasforma un'immagine in triangoli, ellissi o rettangoli sovrapposti. Ogni forma è un rettangolo nel gioco: 80-150 bastano per un'icona, 300 o più si avvicinano a un'immagine dettagliata. La fusione morbida rende alcune forme semitrasparenti, con colori più morbidi allo stesso costo. Le parti trasparenti restano vuote.",
+ "Triangoli ed ellissi",
+ "Triangoli",
+ "Tutte le forme",
+ "altre forme non aiuterebbero",
+ "Triangoli, ellissi o rettangoli sovrapposti, nitidi a qualsiasi dimensione.",
+ "Alcune forme diventano semitrasparenti e si fondono con quelle sotto: colori più morbidi con lo stesso numero di rettangoli.",
+ "fusione morbida",
+ "SpriteForge non contiene file, grafica o codice del gioco. Fa riferimento alle forme integrate dell'editor solo tramite i loro numeri di indice (100001, 100002, 100003). Tutto ciò che disegni ed esporti è opera tua."
 ]

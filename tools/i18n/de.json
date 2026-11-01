@@ -626,5 +626,14 @@
  "(0, 0) ist die Mitte des Containers. Größe gibt an, wie viele Bildschirmeinheiten ein Pixel oder eine Zeicheneinheit einnimmt.",
  "spriteforge.lua herunterladen",
  "Separate Dateien (für Programmierer)",
- "Nutze sie, wenn du die Sprites aus eigenen Skripten steuerst. Misch sie nicht mit spriteforge.lua in derselben Stage."
+ "Nutze sie, wenn du die Sprites aus eigenen Skripten steuerst. Misch sie nicht mit spriteforge.lua in derselben Stage.",
+ "Bild importieren… → Zeichnung verwandelt ein Bild in überlappende Dreiecke, Ellipsen oder Rechtecke. Jede Form ist im Spiel ein Rechteck: 80-150 reichen für ein Icon, 300 oder mehr kommen einem detaillierten Bild nahe. Weiches Überblenden macht manche Formen halbtransparent, das ergibt weichere Farben bei gleichen Kosten. Transparente Bereiche bleiben leer.",
+ "Dreiecke und Ellipsen",
+ "Dreiecke",
+ "Alle Formen",
+ "mehr Formen würden nicht helfen",
+ "Überlappende Dreiecke, Ellipsen oder Rechtecke, glatt in jeder Größe.",
+ "Manche Formen werden halbtransparent und mischen sich mit den Formen darunter: weichere Farben bei gleicher Anzahl Rechtecke.",
+ "weiches Überblenden",
+ "SpriteForge enthält keine Spieldateien, Grafiken oder Code. Die integrierten Formen des Editors werden nur über ihre Indexnummern (100001, 100002, 100003) angesprochen. Alles, was du zeichnest und exportierst, ist dein eigenes Werk."
 ]

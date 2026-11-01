@@ -39,11 +39,14 @@ ok("no missing colour keys", !(aCol + await colours(b2)).includes("missing"));
 // drawing (shapes) import
 await pg.keyboard.press("Control+i"); await pg.waitForTimeout(200);
 await pg.click(".dialog.on .kindbtn >> text=Drawing"); await pg.waitForTimeout(100);
-ok("drawing mode shows shape options", await pg.locator(".dialog.on select option", { hasText: "Ellipses and rectangles" }).count() === 1);
+ok("drawing mode shows shape options", await pg.locator(".dialog.on select option", { hasText: "Ellipses and rectangles" }).count() === 1 && await pg.locator(".dialog.on select option", { hasText: "Triangles" }).count() === 2);
+ok("triangles and ellipses by default", await pg.locator(".dialog.on select").inputValue() === "et");
+ok("soft blending on by default", await pg.locator(".dialog.on label.chk", { hasText: "soft blending" }).locator("input").isChecked());
+ok("up to 64 colours", await pg.locator(".dialog.on input[type=number][max='64']").count() === 1);
 const cnt = pg.locator(".dialog.on input[type=number]").filter({ has: pg.locator("xpath=self::*[@max='500']") });
 await cnt.fill("60"); await cnt.dispatchEvent("change");
 await choose(pic1);
-await pg.waitForFunction(() => /^\d+ rectangles$/.test(document.querySelector(".dialog.on .stat")?.textContent || ""), null, { timeout: 20000 });
+await pg.waitForFunction(() => /^\d+ rectangles/.test(document.querySelector(".dialog.on .stat")?.textContent || ""), null, { timeout: 20000 });
 await pg.screenshot({ path: shots + "import_shapes.png" });
 const label = await pg.locator(".dialog.on .stat").innerText();
 ok("shapes fitted: " + label, +label.split(" ")[0] >= 10 && +label.split(" ")[0] <= 60);
@@ -53,7 +56,7 @@ const v = await pg.evaluate(() => { const sp = PF.S.project.sprites[PF.S.sprite]
 console.log("  ", JSON.stringify(v));
 ok("drawing sprite added", v.kind === "vector" && v.n >= 10 && v.w === 64 && v.h === 54);
 ok("Cyrillic name transliterated", v.name === "Lysychka");
-ok("ellipses by default, some turned", v.types === "e" && v.rot > 0);
+ok("triangles and ellipses only, some turned: " + v.types, /^[et]+$/.test(v.types) && v.rot > 0);
 ok("drawing colours present", !(await colours(v.name)).includes("missing"));
 await pg.screenshot({ path: shots + "import_drawn.png" });
 await pg.keyboard.press("Shift+H"); await pg.waitForTimeout(100);
@@ -64,9 +67,31 @@ await pg.keyboard.press("Control+z");
 await pg.keyboard.press("Control+i"); await pg.waitForTimeout(200);
 ok("import remembers drawing mode", await pg.locator(".dialog.on .kindbtn.on", { hasText: "Drawing" }).count() === 1);
 await pg.selectOption(".dialog.on select", "r"); await choose(pic2);
-await pg.waitForFunction(() => /^\d+ rectangles$/.test(document.querySelector(".dialog.on .stat")?.textContent || ""), null, { timeout: 20000 });
+await pg.waitForFunction(() => /^\d+ rectangles/.test(document.querySelector(".dialog.on .stat")?.textContent || ""), null, { timeout: 20000 });
 await pg.click(".dialog.on >> text=Add sprite"); await pg.waitForTimeout(300);
 ok("rectangles only", await pg.evaluate(() => PF.S.project.sprites[PF.S.sprite].frames[0].layers.body.every(s => s.t === "r")));
+
+// triangles only: a photo-like gradient, soft blending gives half transparent colours
+await pg.keyboard.press("Control+i"); await pg.waitForTimeout(200);
+ok("import remembers rectangles", await pg.locator(".dialog.on select").inputValue() === "r");
+await pg.selectOption(".dialog.on select", "t");
+const grad = Buffer.from((await pg.evaluate(() => { const c = document.createElement("canvas"); c.width = 96; c.height = 96; const x = c.getContext("2d");
+  const g = x.createRadialGradient(40, 40, 4, 48, 48, 60); g.addColorStop(0, "#ffe0a0"); g.addColorStop(0.5, "#e07030"); g.addColorStop(1, "#402060"); x.fillStyle = g; x.fillRect(0, 0, 96, 96);
+  x.fillStyle = "#203080"; x.beginPath(); x.moveTo(48, 10); x.lineTo(86, 80); x.lineTo(10, 80); x.closePath(); x.globalAlpha = 0.5; x.fill(); return c.toDataURL("image/png"); })).split(",")[1], "base64");
+await choose(grad);
+await pg.waitForFunction(() => /^\d+ rectangles/.test(document.querySelector(".dialog.on .stat")?.textContent || ""), null, { timeout: 30000 });
+await pg.screenshot({ path: shots + "import_triangles.png" });
+await pg.click(".dialog.on >> text=Add sprite"); await pg.waitForTimeout(400);
+const tv = await pg.evaluate(() => { const S = PF.S, sh = S.project.sprites[S.sprite].frames[0].layers.body; return { n: sh.length, tri: sh.every(s => s.t === "t"), half: sh.filter(s => (S.project.palettes.base[s.c] || [])[3] === 128).length, range: sh.every(s => !s.r || (s.r > -180 && s.r <= 180)) }; });
+console.log("  ", JSON.stringify(tv));
+ok("triangles only", tv.tri && tv.n >= 30);
+ok("soft blending adds half transparent shapes", tv.half > 0);
+ok("triangle angles in range", tv.range);
+await pg.screenshot({ path: shots + "import_triangles_sprite.png" });
+const before = await pg.evaluate(() => JSON.stringify(PF.S.project.sprites[PF.S.sprite].frames[0].layers.body));
+await pg.keyboard.press("Shift+H"); await pg.waitForTimeout(100); await pg.keyboard.press("Shift+H"); await pg.waitForTimeout(100);
+ok("mirroring twice gives the same triangles", await pg.evaluate(b => { const a = JSON.parse(b), c = PF.S.project.sprites[PF.S.sprite].frames[0].layers.body; return a.length === c.length && a.every((s, i) => Math.abs(s.x - c[i].x) < 0.11 && Math.abs((s.r || 0) - (c[i].r || 0)) < 0.11); }, before));
+await pg.keyboard.press("Control+z"); await pg.keyboard.press("Control+z");
 await pg.keyboard.press("Control+i"); await pg.waitForTimeout(200); await choose(pic1); await pg.waitForTimeout(300); await pg.keyboard.press("Escape"); await pg.waitForTimeout(600);
 ok("Esc closes import while working", await pg.locator(".dialog.on").count() === 0);
 

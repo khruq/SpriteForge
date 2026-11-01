@@ -6,6 +6,7 @@ Px.PX = D.PX or 4
 Px.SEAM = 0.6
 Px.SQUARE = 100001
 Px.CIRCLE = 100002
+Px.TRIANGLE = 100003
 Px.count = 0
 
 local floor, max, min, sin, random = math.floor, math.max, math.min, math.sin, math.random
@@ -237,7 +238,7 @@ local function paintPrims(node, s, px, flip, palName, alpha)
       ctrls[i] = c
       setVisible(c, true)
     end
-    local asset = q[1] == 2 and Px.CIRCLE or Px.SQUARE
+    local asset = q[1] == 2 and Px.CIRCLE or q[1] == 3 and Px.TRIANGLE or Px.SQUARE
     if imgs[i] ~= asset then setImage(c, asset) imgs[i] = asset end
     local col = Px.color(q[7], palName)
     local cx = (q[2] - s.ax) * px

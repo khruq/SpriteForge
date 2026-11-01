@@ -626,5 +626,14 @@
  "(0, 0) adalah titik tengah container. Ukuran adalah berapa unit layar yang dipakai satu piksel atau satu unit gambar.",
  "Unduh spriteforge.lua",
  "File terpisah (untuk programmer)",
- "Gunakan file-file ini jika kamu mengendalikan sprite dari skripmu sendiri. Jangan campur dengan spriteforge.lua dalam satu stage."
+ "Gunakan file-file ini jika kamu mengendalikan sprite dari skripmu sendiri. Jangan campur dengan spriteforge.lua dalam satu stage.",
+ "Impor gambar… → Gambar mengubah sebuah gambar menjadi segitiga, elips, atau persegi yang saling tumpang tindih. Setiap bentuk adalah satu persegi di game: 80-150 cukup untuk ikon, 300 atau lebih sudah mendekati gambar yang detail. Campuran lembut membuat sebagian bentuk setengah transparan, sehingga warnanya lebih halus dengan biaya yang sama. Bagian transparan tetap kosong.",
+ "Segitiga dan elips",
+ "Segitiga",
+ "Semua bentuk",
+ "menambah bentuk tidak akan membantu",
+ "Segitiga, elips, atau persegi yang saling tumpang tindih, halus di ukuran apa pun.",
+ "Sebagian bentuk menjadi setengah transparan dan bercampur dengan bentuk di bawahnya: warna lebih halus dengan jumlah persegi yang sama.",
+ "campuran lembut",
+ "SpriteForge tidak berisi file, aset seni, atau kode game apa pun. Alat ini hanya merujuk bentuk bawaan editor melalui nomor indeksnya (100001, 100002, 100003). Semua yang Anda gambar dan ekspor adalah karya Anda sendiri."
 ]

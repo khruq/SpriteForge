@@ -1,7 +1,7 @@
 // SpriteForge - vector drawings. A vector sprite stores shapes in sprite units
 // (y down, like the pixel grid). For the game every shape is compiled into
 // primitives the runtime can show with built-in assets:
-//   a = 1 square (asset 100001), a = 2 circle (asset 100002)
+//   a = 1 square (asset 100001), a = 2 circle (asset 100002), a = 3 triangle (asset 100003)
 //   x, y = centre, w, h = size, r = rotation in degrees (clockwise on screen), c = colour key
 // The editor preview draws exactly these primitives, so what you see is what the game shows.
 //
@@ -9,9 +9,11 @@
 //   { t: "s", c, w, p: [x0, y0, x1, y1, ...] }  stroke with round ends and joints
 //   { t: "r", c, x, y, w, h, r }                  filled rectangle (top-left corner, size, optional rotation)
 //   { t: "e", c, x, y, w, h, r }                  filled ellipse (bounding box, optional rotation)
+//   { t: "t", c, x, y, w, h, r }                  filled triangle: tip at the middle of the top edge, base along the bottom edge
 // r turns the shape around its centre, in degrees clockwise on screen.
 
 const R2 = v => Math.round(v * 10) / 10;
+const BOX_KIND = { r: 1, e: 2, t: 3 };
 
 export function newVectorSprite(name, w = 64, h = 64) {
   return {
@@ -46,7 +48,7 @@ export function simplifyPoints(p, tol) {
 }
 
 export function compileShape(s, out = []) {
-  if (s.t === "r" || s.t === "e") { out.push({ a: s.t === "r" ? 1 : 2, x: R2(s.x + s.w / 2), y: R2(s.y + s.h / 2), w: R2(Math.abs(s.w)), h: R2(Math.abs(s.h)), r: R2(s.r || 0), c: s.c }); return out; }
+  if (BOX_KIND[s.t]) { out.push({ a: BOX_KIND[s.t], x: R2(s.x + s.w / 2), y: R2(s.y + s.h / 2), w: R2(Math.abs(s.w)), h: R2(Math.abs(s.h)), r: R2(s.r || 0), c: s.c }); return out; }
   if (s.t !== "s") return out;
   const p = s.p, n = p.length / 2, w = s.w;
   if (n === 0) return out;
@@ -89,6 +91,7 @@ export function drawPrims(ctx, prims, colorOf, ox, oy, s, alphaMul = 1) {
     ctx.translate(ox + q.x * s, oy + q.y * s);
     if (q.r) ctx.rotate(q.r * Math.PI / 180);
     if (q.a === 2) { ctx.beginPath(); ctx.ellipse(0, 0, Math.max(0.01, q.w * s / 2), Math.max(0.01, q.h * s / 2), 0, 0, Math.PI * 2); ctx.fill(); }
+    else if (q.a === 3) { const hw = q.w * s / 2, hh = q.h * s / 2; ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(hw, hh); ctx.lineTo(-hw, hh); ctx.closePath(); ctx.fill(); }
     else ctx.fillRect(-q.w * s / 2, -q.h * s / 2, q.w * s, q.h * s);
     ctx.restore();
   }
@@ -99,6 +102,7 @@ export function primHit(q, x, y, pad = 0) {
   const lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
   const hw = q.w / 2 + pad, hh = q.h / 2 + pad;
   if (q.a === 2) return (lx * lx) / (hw * hw) + (ly * ly) / (hh * hh) <= 1;
+  if (q.a === 3) return ly >= -hh && ly <= hh && Math.abs(lx) <= hw * (ly + hh) / (2 * hh);
   return Math.abs(lx) <= hw && Math.abs(ly) <= hh;
 }
 // index of the topmost shape under (x, y), or -1
@@ -118,7 +122,10 @@ export function mapShape(s, fx, fy) {
   if (s.t === "s") { for (let i = 0; i < s.p.length; i += 2) { s.p[i] = R2(fx(s.p[i])); s.p[i + 1] = R2(fy(s.p[i + 1])); } return s; }
   const xa = fx(s.x), xb = fx(s.x + s.w), ya = fy(s.y), yb = fy(s.y + s.h);
   s.x = R2(Math.min(xa, xb)); s.w = R2(Math.abs(xb - xa)); s.y = R2(Math.min(ya, yb)); s.h = R2(Math.abs(yb - ya));
-  if (s.r && (xb < xa) !== (yb < ya)) s.r = -s.r;
+  const fx2 = xb < xa, fy2 = yb < ya;
+  if (s.t === "t") {
+    if (fx2 || fy2) { let r = fx2 && fy2 ? (s.r || 0) + 180 : fy2 ? 180 - (s.r || 0) : -(s.r || 0); r = ((r % 360) + 360) % 360; if (r > 180) r -= 360; r = R2(r); if (r) s.r = r; else delete s.r; }
+  } else if (s.r && fx2 !== fy2) s.r = -s.r;
   return s;
 }
 export function moveShape(s, dx, dy) { return mapShape(s, x => x + dx, y => y + dy); }

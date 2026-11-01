@@ -1,5 +1,5 @@
-import { compileShapes, drawPrims } from "./vector.js?v=1.8";
-import { cachedFrame, drawScaled } from "./raster.js?v=1.8";
+import { compileShapes, drawPrims } from "./vector.js?v=1.0";
+import { cachedFrame, drawScaled } from "./raster.js?v=1.0";
 // SpriteForge - runtime simulator. Mirrors lua/pix.lua: the same clip evaluation
 // and the same state machine, so what the browser preview shows is what the
 // Lua runtime does in the game.

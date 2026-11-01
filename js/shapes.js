@@ -1,13 +1,21 @@
-// SpriteForge - turns a picture into overlapping filled ellipses and rectangles.
+// SpriteForge - turns a picture into overlapping filled triangles, ellipses and rectangles.
 // Every step tries many random shapes, improves the best few by small random
 // changes and keeps the one that brings the drawing closest to the picture.
 // Transparent parts of the picture stay empty: covering one costs several times
 // more than leaving a visible pixel uncovered, because nothing can clear it later.
+// Shapes also stay inside the edges of the picture: the game shows every part of them.
 //
-// fitShapes(rgba, w, h, opts, onStep) -> { shapes, palette }
+// fitShapes(rgba, w, h, opts, onStep) -> { shapes, palette, placed }
 //   rgba: Uint8ClampedArray of w*h pixels
-//   opts: { count, colors, kinds ("e", "r" or "er"), thr, seed, spill, tries, climbers }
-//   shapes: [{ t: "e"|"r", c: palette index, x, y: centre, a, b: half width and height, r: degrees clockwise }]
+//   opts: { count, colors, kinds (letters e, r, t: "e", "er", "t", "ert"...), soft, thr, seed, spill, tries, climbers }
+//   soft: a shape may also be half transparent (alpha SOFT) when that brings the drawing closer;
+//   such shapes only blend over parts already covered, so the outline of the picture stays solid.
+//   palette entries are [r, g, b] or [r, g, b, a] for half transparent shapes
+//   shapes: [{ t: "e"|"r"|"t", c: palette index, x, y: centre, a, b: half width and height, r: degrees clockwise }]
+//   placed: shapes laid before the ones hidden under later shapes were dropped;
+//   fewer than opts.count means more shapes would no longer bring the drawing closer.
+//   A triangle fills its box like the built-in triangle image: the tip at the middle of the
+//   top edge, the base along the bottom edge, then the whole box turns by r around its centre.
 
 function rng32(seed) {
   let a = (seed >>> 0) || 1;
@@ -76,22 +84,64 @@ function span(s, cs, sn, dy) {
   return lo > hi ? null : [lo, hi];
 }
 
-// calls fn(i) for every pixel whose centre lies inside the shape
-export function forPixels(s, w, h, fn) {
+// corners of a triangle in picture coordinates: tip, right foot, left foot
+export function triCorners(s) {
+  const rad = s.r * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
+  return [[0, -s.b], [s.a, s.b], [-s.a, s.b]].map(([lx, ly]) => [s.x + cs * lx - sn * ly, s.y + sn * lx + cs * ly]);
+}
+
+// calls fn(y, xa, xb) for every row of the picture the shape covers, xa..xb = pixels whose centre lies inside;
+// returns how many pixel centres of the shape lie beyond the edges of the picture
+function eachRow(s, w, h, fn) {
+  let off = 0;
+  const row = (y, lo, hi) => {
+    const a = Math.ceil(lo - 0.5), b = Math.floor(hi - 0.5);
+    if (a > b) return;
+    if (y < 0 || y >= h) { off += b - a + 1; return; }
+    const xa = a < 0 ? 0 : a, xb = b >= w ? w - 1 : b;
+    if (xa <= xb) { off += b - a - (xb - xa); fn(y, xa, xb); } else off += b - a + 1;
+  };
+  if (s.t === "t") {
+    const V = triCorners(s);
+    const y0 = Math.ceil(Math.min(V[0][1], V[1][1], V[2][1]) - 0.5), y1 = Math.floor(Math.max(V[0][1], V[1][1], V[2][1]) - 0.5);
+    for (let y = y0; y <= y1; y++) {
+      const yc = y + 0.5;
+      let lo = Infinity, hi = -Infinity;
+      for (let k = 0; k < 3; k++) {
+        const P = V[k], Q = V[(k + 1) % 3];
+        if (P[1] === Q[1] || (yc - P[1]) * (yc - Q[1]) > 0) continue;
+        const x = P[0] + (yc - P[1]) * (Q[0] - P[0]) / (Q[1] - P[1]);
+        if (x < lo) lo = x;
+        if (x > hi) hi = x;
+      }
+      if (lo <= hi) row(y, lo, hi);
+    }
+    return off;
+  }
   const rad = s.r * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
   const ext = s.t === "e" ? Math.sqrt(s.a * s.a * sn * sn + s.b * s.b * cs * cs) : s.a * Math.abs(sn) + s.b * Math.abs(cs);
-  const y0 = Math.max(0, Math.ceil(s.y - ext - 0.5)), y1 = Math.min(h - 1, Math.floor(s.y + ext - 0.5));
+  const y0 = Math.ceil(s.y - ext - 0.5), y1 = Math.floor(s.y + ext - 0.5);
   for (let y = y0; y <= y1; y++) {
     const sp = span(s, cs, sn, y + 0.5 - s.y);
-    if (!sp) continue;
-    const xa = Math.max(0, Math.ceil(s.x + sp[0] - 0.5)), xb = Math.min(w - 1, Math.floor(s.x + sp[1] - 0.5));
-    for (let x = xa, i = y * w + xa; x <= xb; x++, i++) fn(i);
+    if (sp) row(y, s.x + sp[0], s.x + sp[1]);
   }
+  return off;
 }
+
+// pixel centres of a shape that lie beyond the edges of the picture
+export function overhang(s, w, h) { return eachRow(s, w, h, () => {}); }
+
+// calls fn(i) for every pixel whose centre lies inside the shape
+export function forPixels(s, w, h, fn) {
+  eachRow(s, w, h, (y, xa, xb) => { for (let i = y * w + xa, e = y * w + xb; i <= e; i++) fn(i); });
+}
+
+export const SOFT = 128;
 
 export function fitShapes(rgba, w, h, opts = {}, onStep = null) {
   const n = w * h, thr = opts.thr ?? 128, count = Math.max(1, opts.count ?? 120), kinds = opts.kinds || "e";
   const tries = opts.tries ?? 100, climbers = opts.climbers ?? 3, maxFail = opts.maxFail ?? 150, maxIter = opts.maxIter ?? 600;
+  const soft = !!opts.soft, AL = SOFT / 255, K1 = 1 - AL;
   const rnd = rng32(opts.seed ?? 7);
   const T = new Float32Array(n * 3), T2 = new Float32Array(n), mask = new Uint8Array(n);
   let inside = 0;
@@ -100,36 +150,42 @@ export function fitShapes(rgba, w, h, opts = {}, onStep = null) {
     const r = rgba[i * 4], g = rgba[i * 4 + 1], b = rgba[i * 4 + 2];
     T[i * 3] = r; T[i * 3 + 1] = g; T[i * 3 + 2] = b; T2[i] = r * r + g * g + b * b;
   }
-  if (!inside) return { shapes: [], palette: [] };
+  if (!inside) return { shapes: [], palette: [], placed: 0 };
   const pal = makePalette(T, mask, n, Math.max(1, Math.min(64, opts.colors ?? 16)), rnd);
   const PEN = opts.penalty ?? 3 * 110 * 110, OUT = PEN * (opts.spill ?? 10);
   const err = new Float64Array(n), top = new Int32Array(n).fill(-1), cdf = new Float64Array(n);
+  const cur = soft ? new Float32Array(n * 3) : null, cov = soft ? new Uint8Array(n) : null;
   for (let i = 0; i < n; i++) err[i] = mask[i] ? PEN : 0;
   const big = Math.max(w, h), minR = 1;
   const gauss = () => { let u = 0; while (u === 0) u = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd()); };
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  const nearest = (r, g, b) => { let c = 0, bd = Infinity; for (let k = 0; k < pal.length; k++) { const p = pal[k], d = (p[0] - r) ** 2 + (p[1] - g) ** 2 + (p[2] - b) ** 2; if (d < bd) { bd = d; c = k; } } return c; };
 
   const score = s => {
-    const rad = s.r * Math.PI / 180, cs = Math.cos(rad), sn = Math.sin(rad);
-    const ext = s.t === "e" ? Math.sqrt(s.a * s.a * sn * sn + s.b * s.b * cs * cs) : s.a * Math.abs(sn) + s.b * Math.abs(cs);
-    const y0 = Math.max(0, Math.ceil(s.y - ext - 0.5)), y1 = Math.min(h - 1, Math.floor(s.y + ext - 0.5));
     let cnt = 0, out = 0, sr = 0, sg = 0, sb = 0, s2 = 0, old = 0;
-    for (let y = y0; y <= y1; y++) {
-      const sp = span(s, cs, sn, y + 0.5 - s.y);
-      if (!sp) continue;
-      const xa = Math.max(0, Math.ceil(s.x + sp[0] - 0.5)), xb = Math.min(w - 1, Math.floor(s.x + sp[1] - 0.5));
+    let na = 0, ar = 0, ag = 0, ab = 0, a2 = 0, bare = 0;
+    const off = eachRow(s, w, h, (y, xa, xb) => {
       for (let i = y * w + xa, e = y * w + xb; i <= e; i++) {
         old += err[i];
-        if (mask[i]) { cnt++; sr += T[i * 3]; sg += T[i * 3 + 1]; sb += T[i * 3 + 2]; s2 += T2[i]; } else out++;
+        if (!mask[i]) { out++; continue; }
+        cnt++; sr += T[i * 3]; sg += T[i * 3 + 1]; sb += T[i * 3 + 2]; s2 += T2[i];
+        if (!soft) continue;
+        if (!cov[i]) { bare++; continue; }
+        const dr = T[i * 3] - K1 * cur[i * 3], dg = T[i * 3 + 1] - K1 * cur[i * 3 + 1], db = T[i * 3 + 2] - K1 * cur[i * 3 + 2];
+        na++; ar += dr; ag += dg; ab += db; a2 += dr * dr + dg * dg + db * db;
       }
-    }
-    if (!cnt) return { gain: -Infinity, c: 0 };
-    const mr = sr / cnt, mg = sg / cnt, mb = sb / cnt;
-    let c = 0, bd = Infinity;
-    for (let k = 0; k < pal.length; k++) { const p = pal[k], d = (p[0] - mr) ** 2 + (p[1] - mg) ** 2 + (p[2] - mb) ** 2; if (d < bd) { bd = d; c = k; } }
-    const p = pal[c];
+    });
+    if (!cnt) return { gain: -Infinity, c: 0, o: 1 };
+    out += off;
+    const c = nearest(sr / cnt, sg / cnt, sb / cnt), p = pal[c];
     const after = s2 - 2 * (p[0] * sr + p[1] * sg + p[2] * sb) + cnt * (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]) + out * OUT;
-    return { gain: old - after, c };
+    const best = { gain: old - after, c, o: 1 };
+    if (na) {
+      const k = 1 / (na * AL), ca = nearest(clamp(ar * k, 0, 255), clamp(ag * k, 0, 255), clamp(ab * k, 0, 255)), q = pal[ca];
+      const afterA = a2 - 2 * AL * (q[0] * ar + q[1] * ag + q[2] * ab) + na * AL * AL * (q[0] * q[0] + q[1] * q[1] + q[2] * q[2]) + (bare + out) * OUT;
+      if (old - afterA > best.gain) return { gain: old - afterA, c: ca, o: 0 };
+    }
+    return best;
   };
 
   let total = 0;
@@ -143,7 +199,7 @@ export function fitShapes(rgba, w, h, opts = {}, onStep = null) {
   const logR = () => Math.exp(Math.log(minR) + rnd() * (Math.log(big / 2) - Math.log(minR)));
   const randomShape = t => {
     const i = pick();
-    return { t, x: (i % w) + rnd(), y: Math.floor(i / w) + rnd(), a: logR(), b: logR(), r: t === "r" && rnd() < 0.5 ? 0 : rnd() * 180 };
+    return { t, x: (i % w) + rnd(), y: Math.floor(i / w) + rnd(), a: logR(), b: logR(), r: t === "t" ? rnd() * 360 : t === "r" && rnd() < 0.5 ? 0 : rnd() * 180 };
   };
   const mutate = s => {
     const m = { ...s }, k = Math.floor(rnd() * 4);
@@ -151,6 +207,7 @@ export function fitShapes(rgba, w, h, opts = {}, onStep = null) {
     if (k === 0) { m.x = clamp(m.x + gauss() * sc, 0, w); m.y = clamp(m.y + gauss() * sc, 0, h); }
     else if (k === 1) m.a = clamp(m.a + gauss() * sc, minR, big);
     else if (k === 2) m.b = clamp(m.b + gauss() * sc, minR, big);
+    else if (s.t === "t" && rnd() < 0.1) m.r = m.r + 180;
     else m.r = rnd() < 0.15 ? Math.round(m.r / 90) * 90 : m.r + gauss() * 18;
     return m;
   };
@@ -169,19 +226,45 @@ export function fitShapes(rgba, w, h, opts = {}, onStep = null) {
     const cands = [];
     for (let j = 0; j < tries; j++) { const s = randomShape(kinds[Math.floor(rnd() * kinds.length)]); cands.push([s, score(s)]); }
     cands.sort((p, q) => q[1].gain - p[1].gain);
-    let best = null, bestSc = { gain: 0, c: 0 };
+    let best = null, bestSc = { gain: 0, c: 0, o: 1 };
     for (let j = 0; j < Math.min(climbers, cands.length); j++) {
       const [s, sc] = climb(cands[j][0], cands[j][1]);
       if (sc.gain > bestSc.gain) { best = s; bestSc = sc; }
     }
     if (!best || bestSc.gain < 1) break;
     const p = pal[bestSc.c], idx = shapes.length;
-    forPixels(best, w, h, i => {
+    if (bestSc.o) forPixels(best, w, h, i => {
       top[i] = idx;
       err[i] = mask[i] ? (T[i * 3] - p[0]) ** 2 + (T[i * 3 + 1] - p[1]) ** 2 + (T[i * 3 + 2] - p[2]) ** 2 : OUT;
+      if (soft) { cur[i * 3] = p[0]; cur[i * 3 + 1] = p[1]; cur[i * 3 + 2] = p[2]; cov[i] = 1; }
     });
-    shapes.push({ ...best, c: bestSc.c });
+    else forPixels(best, w, h, i => {
+      if (!mask[i] || !cov[i]) { err[i] = OUT; return; }
+      for (let c = 0; c < 3; c++) cur[i * 3 + c] = AL * p[c] + K1 * cur[i * 3 + c];
+      err[i] = (T[i * 3] - cur[i * 3]) ** 2 + (T[i * 3 + 1] - cur[i * 3 + 1]) ** 2 + (T[i * 3 + 2] - cur[i * 3 + 2]) ** 2;
+    });
+    shapes.push(soft ? { ...best, c: bestSc.c, o: bestSc.o } : { ...best, c: bestSc.c });
     if (onStep) onStep(shapes.length, count, shapes, pal);
+  }
+
+  const angle = s => {
+    let r;
+    if (s.t === "t") { r = ((s.r % 360) + 360) % 360; if (r > 180) r -= 360; }
+    else { r = ((s.r % 180) + 180) % 180; if (r > 90) r -= 180; }
+    return r;
+  };
+  if (soft) {
+    // drop shapes that a later solid shape hides completely; colours keep their transparency
+    const kept = [], key = new Map(), palette = [];
+    shapes.forEach((s, k) => {
+      let seen = false;
+      forPixels(s, w, h, i => { if (top[i] <= k) seen = true; });
+      if (!seen) return;
+      const id = s.c * 2 + (s.o ? 0 : 1);
+      if (!key.has(id)) { const p = pal[s.c]; key.set(id, palette.length); palette.push(s.o ? [p[0], p[1], p[2]] : [p[0], p[1], p[2], SOFT]); }
+      kept.push({ t: s.t, c: key.get(id), x: s.x, y: s.y, a: s.a, b: s.b, r: angle(s) });
+    });
+    return { shapes: kept, palette, placed: shapes.length };
   }
 
   // recolour every shape from the part that stays visible, drop shapes nothing shows of
@@ -191,31 +274,33 @@ export function fitShapes(rgba, w, h, opts = {}, onStep = null) {
   shapes.forEach((s, k) => {
     const v = sums[k];
     if (!v[4]) return;
-    if (v[3]) {
-      const mr = v[0] / v[3], mg = v[1] / v[3], mb = v[2] / v[3];
-      let c = s.c, bd = Infinity;
-      for (let q = 0; q < pal.length; q++) { const p = pal[q], d = (p[0] - mr) ** 2 + (p[1] - mg) ** 2 + (p[2] - mb) ** 2; if (d < bd) { bd = d; c = q; } }
-      s.c = c;
-    }
-    let r = ((s.r % 180) + 180) % 180;
-    if (r > 90) r -= 180;
-    kept.push({ t: s.t, c: s.c, x: s.x, y: s.y, a: s.a, b: s.b, r });
+    if (v[3]) s.c = nearest(v[0] / v[3], v[1] / v[3], v[2] / v[3]);
+    kept.push({ t: s.t, c: s.c, x: s.x, y: s.y, a: s.a, b: s.b, r: angle(s) });
   });
   const used = [...new Set(kept.map(s => s.c))].sort((p, q) => p - q), at = new Map(used.map((c, i) => [c, i]));
   for (const s of kept) s.c = at.get(s.c);
-  return { shapes: kept, palette: used.map(c => pal[c]) };
+  return { shapes: kept, palette: used.map(c => pal[c]), placed: shapes.length };
 }
 
-// error of a finished set of shapes against the picture, 0 = identical (used by tests)
+// error of a finished set of shapes against the picture, 0 = identical (used by tests).
+// A pixel counts as covered once a solid shape lies on it; half transparent shapes blend on top.
+// Anything drawn outside the picture counts as a miss, like a visible pixel left empty.
 export function shapesError(rgba, w, h, shapes, palette, thr = 128, penalty = 3 * 110 * 110) {
-  const n = w * h, col = new Int32Array(n).fill(-1);
-  for (const s of shapes) forPixels(s, w, h, i => { col[i] = s.c; });
+  const n = w * h, cur = new Float32Array(n * 3), solid = new Uint8Array(n), any = new Uint8Array(n);
+  for (const s of shapes) {
+    const p = palette[s.c], a = (p[3] ?? 255) / 255;
+    forPixels(s, w, h, i => {
+      any[i] = 1;
+      if (a >= 1) { solid[i] = 1; cur[i * 3] = p[0]; cur[i * 3 + 1] = p[1]; cur[i * 3 + 2] = p[2]; return; }
+      for (let c = 0; c < 3; c++) cur[i * 3 + c] = a * p[c] + (1 - a) * cur[i * 3 + c];
+    });
+  }
   let e = 0;
   for (let i = 0; i < n; i++) {
-    const m = rgba[i * 4 + 3] >= thr, c = col[i];
-    if (c < 0) e += m ? penalty : 0;
-    else if (!m) e += penalty;
-    else { const p = palette[c]; e += (rgba[i * 4] - p[0]) ** 2 + (rgba[i * 4 + 1] - p[1]) ** 2 + (rgba[i * 4 + 2] - p[2]) ** 2; }
+    const m = rgba[i * 4 + 3] >= thr;
+    if (!m) { if (any[i]) e += penalty; }
+    else if (!solid[i]) e += penalty;
+    else e += (rgba[i * 4] - cur[i * 3]) ** 2 + (rgba[i * 4 + 1] - cur[i * 3 + 1]) ** 2 + (rgba[i * 4 + 2] - cur[i * 3 + 2]) ** 2;
   }
   return e / n;
 }

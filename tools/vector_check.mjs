@@ -5,13 +5,13 @@ import { execFileSync } from "child_process";
 import fs from "fs"; import os from "os"; import path from "path";
 const proj = { format: "pixforge", version: 1, name: "v", px: 2, palettes: { base: { ...VECTOR_PRESET_COLORS } }, sprites: {}, clips: {}, behaviors: {} };
 const sp = newVectorSprite("smile", 64, 64);
-sp.frames[0].layers.body = JSON.parse(JSON.stringify(VECTOR_PRESETS[0].shapes));
+sp.frames[0].layers.body = JSON.parse(JSON.stringify(VECTOR_PRESETS[0].shapes)).concat([{ t: "t", c: "red1", x: 20, y: 40, w: 12, h: 8, r: 35 }, { t: "t", c: "sky", x: 40, y: 10, w: 10, h: 14 }]);
 proj.sprites.smile = sp;
 const prims = compileFrame(sp, 0);
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sfvec-"));
 fs.writeFileSync(path.join(dir, "pixdata.lua"), toLua(proj));
 const px = 2;
-const expect = prims.map(q => [q.a === 2 ? 100002 : 100001, (q.x - sp.ax) * px, (sp.ay - q.y) * px, q.w * px, q.h * px, -(q.r || 0)].map(v => Math.round(v * 1000) / 1000).join(" ")).join("\n");
+const expect = prims.map(q => [q.a === 2 ? 100002 : q.a === 3 ? 100003 : 100001, (q.x - sp.ax) * px, (sp.ay - q.y) * px, q.w * px, q.h * px, -(q.r || 0)].map(v => Math.round(v * 1000) / 1000).join(" ")).join("\n");
 fs.writeFileSync(path.join(dir, "expect.txt"), expect);
 fs.writeFileSync(path.join(dir, "run.lua"), `package.path = "${dir}/?.lua;${process.cwd()}/lua/?.lua;" .. package.path
 local made = {}
@@ -35,5 +35,7 @@ for _, c in ipairs(node.rectCtrls) do rows[#rows + 1] = table.concat({ fmt(c.img
 local f = io.open("${dir}/expect.txt") local want = f:read("a") f:close()
 local got = table.concat(rows, "\\n")
 if got ~= want then print("GOT\\n" .. got .. "\\nWANT\\n" .. want) error("vector placement mismatch") end
-print("vector OK", #rows, "primitives")`);
+local tri = 0 for _, c in ipairs(node.rectCtrls) do if c.img == 100003 then tri = tri + 1 end end
+if tri ~= 2 then error("triangles: " .. tri) end
+print("vector OK", #rows, "primitives,", tri, "triangles")`);
 console.log(execFileSync("lua", [path.join(dir, "run.lua")]).toString().trim());

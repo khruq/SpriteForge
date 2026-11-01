@@ -626,5 +626,14 @@
  "(0, 0) là tâm của container. Kích thước là số đơn vị màn hình mà một pixel hoặc một đơn vị vẽ chiếm.",
  "Tải xuống spriteforge.lua",
  "Các tệp riêng (dành cho lập trình viên)",
- "Dùng các tệp này khi bạn điều khiển sprite từ script của riêng mình. Đừng dùng chung với spriteforge.lua trong cùng một màn chơi."
+ "Dùng các tệp này khi bạn điều khiển sprite từ script của riêng mình. Đừng dùng chung với spriteforge.lua trong cùng một màn chơi.",
+ "Nhập ảnh… → Vẽ sẽ biến một bức ảnh thành các hình tam giác, hình elip hoặc hình chữ nhật chồng lên nhau. Mỗi hình là một hình chữ nhật trong trò chơi: 80-150 hình là đủ cho một biểu tượng, từ 300 hình trở lên sẽ gần giống một bức ảnh chi tiết. Hòa trộn mềm cho phép một số hình trong suốt một nửa, giúp màu mượt hơn với cùng chi phí. Các phần trong suốt sẽ để trống.",
+ "Hình tam giác và hình elip",
+ "Hình tam giác",
+ "Tất cả các hình",
+ "thêm hình cũng không giúp gì",
+ "Các hình tam giác, hình elip hoặc hình chữ nhật chồng lên nhau, mượt ở mọi kích thước.",
+ "Một số hình trở nên bán trong suốt và hòa với các hình bên dưới: màu mượt hơn với cùng số hình chữ nhật.",
+ "hòa trộn mềm",
+ "SpriteForge không chứa bất kỳ tệp, hình ảnh hay mã nào của trò chơi. Công cụ chỉ tham chiếu các hình dạng tích hợp của trình chỉnh sửa bằng số chỉ mục (100001, 100002, 100003). Mọi thứ bạn vẽ và xuất ra đều là tác phẩm của riêng bạn."
 ]

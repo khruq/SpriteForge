@@ -626,5 +626,14 @@
  "(0, 0) est le centre du conteneur. Taille indique combien d'unités d'écran occupe un pixel ou une unité de dessin.",
  "Télécharger spriteforge.lua",
  "Fichiers séparés (pour les programmeurs)",
- "Utilisez-les si vous pilotez les sprites depuis vos propres scripts. Ne les mélangez pas avec spriteforge.lua dans un même niveau."
+ "Utilisez-les si vous pilotez les sprites depuis vos propres scripts. Ne les mélangez pas avec spriteforge.lua dans un même niveau.",
+ "Importer une image… → Dessin transforme une image en triangles, ellipses ou rectangles superposés. Chaque forme est un rectangle dans le jeu : 80-150 suffisent pour une icône, 300 ou plus se rapprochent d'une image détaillée. Le fondu doux rend certaines formes semi-transparentes, ce qui donne des couleurs plus douces pour le même coût. Les parties transparentes restent vides.",
+ "Triangles et ellipses",
+ "Triangles",
+ "Toutes les formes",
+ "plus de formes n'aideraient pas",
+ "Triangles, ellipses ou rectangles superposés, lisses à toute taille.",
+ "Certaines formes deviennent semi-transparentes et se mélangent avec celles du dessous : des couleurs plus douces pour le même nombre de rectangles.",
+ "fondu doux",
+ "SpriteForge ne contient aucun fichier, élément graphique ou code du jeu. Il désigne les formes intégrées de l'éditeur uniquement par leurs numéros d'index (100001, 100002, 100003). Tout ce que vous dessinez et exportez est votre propre création."
 ]

@@ -2,16 +2,14 @@
 
 Live: https://khruq.github.io/SpriteForge/
 
-A browser sprite editor (pixel art and freehand drawings) for games that cannot load image files. Draw or import a sprite, give it colour variants, animate it on a timeline, describe how it reacts with a small state machine, and export one Lua file for the game. Every sprite is stored as a minimal set of coloured rectangles; the bundled `pix.lua` runtime draws them with plain UI image controls from Lua client scripts, and the format is simple enough to port to any engine.
-
 The editor is available in 15 languages, auto-detected from the browser; standard editor shortcuts (`?` shows the list), a full colour picker, a built-in Guide and a sample project help first-time users.
 
 **Live editor:** open `index.html` (or the GitHub Pages site). **Docs:** `docs/index.html`.
 
 ## What you get
 
-- **Two kinds of sprites** - pixel art (pencil, fill, import a picture) or freehand drawings (brush strokes, lines, circles, boxes) that the runtime rebuilds from rotated rectangles and circles, identical to the editor.
-- **Draw or import** - pencil / fill / line / rect / mirror, layers, frames; import a picture as pixel art (quantised to N colours, optional outline) or as a drawing (overlapping ellipses or rectangles fitted to the picture), a sprite sheet, ASCII rows, or an earlier `pixdata.lua`.
+- **Two kinds of sprites** - pixel art (pencil, fill, import a picture) or freehand drawings (brush strokes, lines, circles, boxes) that the runtime rebuilds from rotated rectangles, circles and triangles, identical to the editor.
+- **Draw or import** - pencil / fill / line / rect / mirror, layers, frames; import a picture as pixel art (quantised to N colours, optional outline) or as a drawing (overlapping triangles, ellipses or rectangles fitted to the picture, with optional soft blending), a sprite sheet, ASCII rows, or an earlier `pixdata.lua`.
 - **Palettes with tint slots** - one sprite, many colour variants at runtime (`pal = "blue"`), no extra cost.
 - **Clips** - timelines on `x y sx sy rot alpha frame pal layer:*` with easing; presets for idle/bounce/squash/shake/float/fadeout.
 - **Behaviours** - a state machine per sprite: events, timers, clip-end, parameter thresholds. The game only fires events and sets parameters.

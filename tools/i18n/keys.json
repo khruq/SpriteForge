@@ -626,5 +626,14 @@
  "(0, 0) is the centre of the container. Size is how many screen units one pixel or one drawing unit takes.",
  "Download spriteforge.lua",
  "Separate files (for programmers)",
- "Use these when you control the sprites from your own scripts. Do not mix them with spriteforge.lua in one stage."
+ "Use these when you control the sprites from your own scripts. Do not mix them with spriteforge.lua in one stage.",
+ "Import image… → Drawing turns a picture into overlapping triangles, ellipses or rectangles. Every shape is one rectangle in the game: 80-150 are enough for an icon, 300 or more come close to a detailed picture. Soft blending lets some shapes be half transparent, which gives smoother colours for the same cost. Transparent parts stay empty.",
+ "Triangles and ellipses",
+ "Triangles",
+ "All shapes",
+ "more shapes would not help",
+ "Overlapping triangles, ellipses or rectangles, smooth at any size.",
+ "Some shapes become half transparent and blend with the shapes below: smoother colours for the same number of rectangles.",
+ "soft blending",
+ "SpriteForge contains no game files, art or code. It refers to the built-in shapes of the editor only by their index numbers (100001, 100002, 100003). Everything you draw and export is your own work."
 ]
