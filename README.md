@@ -42,6 +42,7 @@ See `lua/example_main.lua` and `examples/pixdata.lua`.
 
 ```
 index.html, css/, js/      the editor (static, no build step)
+favicon.svg, favicon.ico, apple-touch-icon.png   browser and home screen icons
 lua/pix.lua                Lua runtime
 lua/example_main.lua       minimal client script
 examples/pixdata.lua       export of the demo project
